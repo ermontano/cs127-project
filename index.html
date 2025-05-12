@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcards Maker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <i class="fas fa-layer-group"></i>
+                <h1>Flashcards Maker</h1>
+            </div>
+            <div class="header-controls">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <button id="theme-toggle" class="icon-button">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="content-container">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Courses</h2>
+                    <button id="add-course-btn" class="icon-button">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="courses-list" id="courses-list">
+                    <!-- Courses will be added here dynamically -->
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <!-- Welcome Screen (shown when no course is selected) -->
+                <section id="welcome-screen" class="welcome-screen">
+                    <div class="welcome-content">
+                        <i class="fas fa-book-open welcome-icon"></i>
+                        <h2>Welcome to Flashcards Maker</h2>
+                        <p>Create and organize your study materials with flashcards</p>
+                        <button id="welcome-create-course" class="primary-button">
+                            <i class="fas fa-plus"></i> Create Your First Course
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Course View -->
+                <section id="course-view" class="course-view hidden">
+                    <div class="course-header">
+                        <div class="course-info">
+                            <h2 id="course-title">Course Title</h2>
+                            <p id="course-description">Course description goes here...</p>
+                        </div>
+                        <div class="course-actions">
+                            <button id="edit-course-btn" class="secondary-button">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button id="delete-course-btn" class="danger-button">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="topics-header">
+                        <h3>Topics</h3>
+                        <button id="add-topic-btn" class="primary-button">
+                            <i class="fas fa-plus"></i> Add Topic
+                        </button>
+                    </div>
+
+                    <div class="topics-grid" id="topics-grid">
+                        <!-- Topics will be added here dynamically -->
+                    </div>
+                </section>
+
+                <!-- Topic View -->
+                <section id="topic-view" class="topic-view hidden">
+                    <div class="navigation-breadcrumb">
+                        <button id="back-to-course-btn" class="text-button">
+                            <i class="fas fa-arrow-left"></i> Back to Course
+                        </button>
+                    </div>
+
+                    <div class="topic-header">
+                        <div class="topic-info">
+                            <h2 id="topic-title">Topic Title</h2>
+                            <p id="topic-description">Topic description goes here...</p>
+                        </div>
+                        <div class="topic-actions">
+                            <button id="edit-topic-btn" class="secondary-button">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button id="delete-topic-btn" class="danger-button">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flashcards-header">
+                        <h3>Flashcards</h3>
+                        <div class="flashcard-controls">
+                            <button id="study-flashcards-btn" class="secondary-button">
+                                <i class="fas fa-play"></i> Study
+                            </button>
+                            <button id="add-flashcard-btn" class="primary-button">
+                                <i class="fas fa-plus"></i> Add Flashcard
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flashcards-list" id="flashcards-list">
+                        <!-- Flashcards will be added here dynamically -->
+                    </div>
+                </section>
+
+                <!-- Study Mode View -->
+                <section id="study-mode" class="study-mode hidden">
+                    <div class="study-header">
+                        <button id="exit-study-btn" class="text-button">
+                            <i class="fas fa-times"></i> Exit Study Mode
+                        </button>
+                        <div class="progress-info">
+                            <span id="current-card">1</span> / <span id="total-cards">10</span>
+                        </div>
+                    </div>
+
+                    <div class="flashcard-container" id="study-flashcard-container">
+                        <div class="study-flashcard" id="study-flashcard">
+                            <div class="flashcard-front" id="study-card-front">
+                                <div class="flashcard-content" id="study-front-content">
+                                    Question goes here
+                                </div>
+                            </div>
+                            <div class="flashcard-back" id="study-card-back">
+                                <div class="flashcard-content" id="study-back-content">
+                                    Answer goes here
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="study-controls">
+                        <button id="prev-card-btn" class="nav-button">
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                        <button id="flip-card-btn" class="primary-button">
+                            <i class="fas fa-sync-alt"></i> Flip Card
+                        </button>
+                        <button id="next-card-btn" class="nav-button">
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Modals -->
+        <!-- Course Modal -->
+        <div id="course-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="course-modal-title">Add New Course</h3>
+                    <button id="close-course-modal" class="close-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="course-form">
+                    <div class="form-group">
+                        <label for="course-name">Course Title</label>
+                        <input type="text" id="course-name" required placeholder="e.g., CMSC 127, MATH 55">
+                    </div>
+                    <div class="form-group">
+                        <label for="course-desc">Description</label>
+                        <textarea id="course-desc" rows="3" placeholder="Brief description about this course"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancel-course-btn" class="secondary-button">Cancel</button>
+                        <button type="submit" id="save-course-btn" class="primary-button">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Topic Modal -->
+        <div id="topic-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="topic-modal-title">Add New Topic</h3>
+                    <button id="close-topic-modal" class="close-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="topic-form">
+                    <div class="form-group">
+                        <label for="topic-name">Topic Title</label>
+                        <input type="text" id="topic-name" required placeholder="e.g., Normalization, SQL Querying">
+                    </div>
+                    <div class="form-group">
+                        <label for="topic-desc">Description</label>
+                        <textarea id="topic-desc" rows="3" placeholder="Brief description about this topic"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancel-topic-btn" class="secondary-button">Cancel</button>
+                        <button type="submit" id="save-topic-btn" class="primary-button">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Flashcard Modal -->
+        <div id="flashcard-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="flashcard-modal-title">Add New Flashcard</h3>
+                    <button id="close-flashcard-modal" class="close-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="flashcard-form">
+                    <div class="form-group">
+                        <label for="flashcard-question">Question</label>
+                        <textarea id="flashcard-question" rows="3" required placeholder="Enter your question here"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="flashcard-answer">Answer</label>
+                        <textarea id="flashcard-answer" rows="3" required placeholder="Enter the answer here"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancel-flashcard-btn" class="secondary-button">Cancel</button>
+                        <button type="submit" id="save-flashcard-btn" class="primary-button">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirm-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="confirm-title">Confirm Action</h3>
+                    <button id="close-confirm-modal" class="close-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="confirm-body">
+                    <p id="confirm-message">Are you sure you want to proceed?</p>
+                </div>
+                <div class="form-actions">
+                    <button id="cancel-confirm-btn" class="secondary-button">Cancel</button>
+                    <button id="confirm-action-btn" class="danger-button">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/models.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/coursesManager.js"></script>
+    <script src="js/topicsManager.js"></script>
+    <script src="js/flashcardsManager.js"></script>
+    <script src="js/studyMode.js"></script>
+    <script src="animations.js"></script>
+</body>
+</html>
