@@ -1,43 +1,37 @@
 /**
- * CoursesManager class
- * Manages all operations related to courses
+ * manages all operations related to courses
  */
 class CoursesManager {
     /**
-     * Create a CoursesManager
-     * @param {StorageManager} storage - StorageManager instance
-     * @param {UIManager} ui - UIManager instance
+     * @param {StorageManager} storage
+     * @param {UIManager} ui
      */
     constructor(storage, ui) {
         this.storage = storage;
         this.ui = ui;
         this.currentCourseId = null;
-        
-        // Initialize event listeners
+
         this.initEventListeners();
     }
 
-    /**
-     * Initialize event listeners
-     */
     initEventListeners() {
-        // Course form submission
+        // course form submission
         document.getElementById('course-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveCourse();
         });
         
-        // Add course button
+        // add course button
         document.getElementById('add-course-btn').addEventListener('click', () => {
             this.ui.openModal('course');
         });
         
-        // Welcome screen create course button
+        // welcome screen create course button
         document.getElementById('welcome-create-course').addEventListener('click', () => {
             this.ui.openModal('course');
         });
         
-        // Course list click event delegation
+        // course list click event delegation
         document.getElementById('courses-list').addEventListener('click', (e) => {
             const courseItem = e.target.closest('.course-item');
             if (courseItem) {
@@ -46,7 +40,7 @@ class CoursesManager {
             }
         });
         
-        // Edit course button
+        // edit course button
         document.getElementById('edit-course-btn').addEventListener('click', () => {
             if (this.currentCourseId) {
                 const course = this.getCourseById(this.currentCourseId);
@@ -56,7 +50,7 @@ class CoursesManager {
             }
         });
         
-        // Delete course button
+        // delete course button
         document.getElementById('delete-course-btn').addEventListener('click', () => {
             if (this.currentCourseId) {
                 this.ui.openModal('confirm', {
@@ -73,36 +67,36 @@ class CoursesManager {
     }
 
     /**
-     * Load all courses and render them
+     * load all courses and render them
      */
     loadCourses() {
         const courses = this.storage.getCourses();
         
-        // Render courses in the sidebar
+        // render courses in the sidebar
         this.ui.renderCoursesList(courses, this.currentCourseId);
         
-        // Update topic counts for each course
+        // update topic counts for each course
         courses.forEach(course => {
             const topicsCount = this.getTopicsCountForCourse(course.id);
             this.ui.updateCourseTopicsCount(course.id, topicsCount);
         });
         
-        // Show welcome screen if no courses
+        // show welcome screen if no courses
         if (courses.length === 0) {
             this.ui.showSection('welcome');
         } else if (this.currentCourseId) {
-            // If we have a selected course, show it
+            // if we have a selected course, show it
             this.selectCourse(this.currentCourseId);
         } else if (courses.length > 0) {
-            // Otherwise select the first course
+            // otherwise select the first course
             this.selectCourse(courses[0].id);
         }
     }
 
     /**
-     * Get a course by ID
+     * get a course by ID
      * @param {string} courseId - ID of the course
-     * @returns {Object|null} The course object or null if not found
+     * @returns {Object|null} the course object or null if not found
      */
     getCourseById(courseId) {
         const courses = this.storage.getCourses();
@@ -110,9 +104,9 @@ class CoursesManager {
     }
 
     /**
-     * Get the number of topics for a course
+     * get the number of topics for a course
      * @param {string} courseId - ID of the course
-     * @returns {number} The number of topics
+     * @returns {number} the number of topics
      */
     getTopicsCountForCourse(courseId) {
         const topics = this.storage.getTopicsByCourse(courseId);
@@ -120,37 +114,37 @@ class CoursesManager {
     }
 
     /**
-     * Select a course and show its details
+     * select a course and show its details
      * @param {string} courseId - ID of the course
      */
     selectCourse(courseId) {
-        // Update current course
+        // update current course
         this.currentCourseId = courseId;
         
-        // Get the course
+        // get the course
         const course = this.getCourseById(courseId);
         if (!course) return;
         
-        // Update UI to show the selected course
+        // update UI to show the selected course
         this.ui.renderCoursesList(this.storage.getCourses(), courseId);
         this.ui.renderCourseDetails(course);
         
-        // Load and render topics for this course
+        // load and render topics for this course
         const topics = this.storage.getTopicsByCourse(courseId);
         this.ui.renderTopicsGrid(topics);
         
-        // Update flashcard counts for each topic
+        // update flashcard counts for each topic
         topics.forEach(topic => {
             const flashcardsCount = this.storage.getFlashcardsByTopic(topic.id).length;
             this.ui.updateTopicFlashcardsCount(topic.id, flashcardsCount);
         });
         
-        // Show the course view
+        // show the course view
         this.ui.showSection('course');
     }
 
     /**
-     * Save a course (new or edit)
+     * save a course (new or edit)
      */
     saveCourse() {
         const titleInput = document.getElementById('course-name');
@@ -164,9 +158,9 @@ class CoursesManager {
             return;
         }
         
-        // Check if we're editing or creating a new course
+        // check if we're editing or creating a new course
         if (this.currentCourseId && document.getElementById('course-modal-title').textContent.startsWith('Edit')) {
-            // Update existing course
+            // update existing course
             const course = this.getCourseById(this.currentCourseId);
             if (course) {
                 course.title = title;
@@ -175,26 +169,26 @@ class CoursesManager {
                 this.storage.saveCourse(course);
                 this.ui.showNotification('Course updated successfully', 'success');
                 
-                // Refresh the course view
+                // refresh the course view
                 this.selectCourse(this.currentCourseId);
             }
         } else {
-            // Create new course
+            // create new course
             const newCourse = new Course(title, description);
             this.storage.saveCourse(newCourse);
             this.ui.showNotification('Course created successfully', 'success');
             
-            // Select the new course
+            // select the new course
             this.currentCourseId = newCourse.id;
         }
         
-        // Close the modal and reload courses
+        // close the modal and reload courses
         this.ui.closeAllModals();
         this.loadCourses();
     }
 
     /**
-     * Delete a course
+     * delete a course
      * @param {string} courseId - ID of the course to delete
      */
     deleteCourse(courseId) {
@@ -203,12 +197,12 @@ class CoursesManager {
         if (success) {
             this.ui.showNotification('Course deleted successfully', 'success');
             
-            // Clear current course
+            // clear current course
             if (this.currentCourseId === courseId) {
                 this.currentCourseId = null;
             }
             
-            // Reload courses
+            // reload courses
             this.loadCourses();
         } else {
             this.ui.showNotification('Failed to delete course', 'error');
@@ -216,9 +210,9 @@ class CoursesManager {
     }
 
     /**
-     * Search courses by term
-     * @param {string} term - The search term
-     * @returns {Array} Matching course objects
+     * search courses by term
+     * @param {string} term - the search term
+     * @returns {Array} matching course objects
      */
     searchCourses(term) {
         if (!term) return [];
