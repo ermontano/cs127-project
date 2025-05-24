@@ -2,7 +2,6 @@
 
 class Course {
     constructor(title, description = '') {
-        this.id = generateId();
         this.title = title;
         this.description = description;
         this.createdAt = new Date();
@@ -12,7 +11,6 @@ class Course {
 
 class Topic {
     constructor(courseId, title, description = '') {
-        this.id = generateId();
         this.courseId = courseId;
         this.title = title;
         this.description = description;
@@ -23,7 +21,6 @@ class Topic {
 
 class Flashcard {
     constructor(topicId, question, answer) {
-        this.id = generateId();
         this.topicId = topicId;
         this.question = question;
         this.answer = answer;
@@ -41,7 +38,4 @@ class Flashcard {
     }
 }
 
-// generate a unique id
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
-}
+// Note: ID generation is now handled by the database with auto-incrementing SERIAL columns

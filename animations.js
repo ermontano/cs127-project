@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     
     // initialize all modules
-    const app = initializeApp();
+    initializeApp();
     
     // set up ui animations and interactions
     setupUIAnimations();
@@ -14,39 +14,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * initializes the application by connecting all modules
- * @returns {Object} the application instance
  */
-function initializeApp() {
-    // initialize the storage manager
-    const storage = new StorageManager();
-    
-    // initialize ui manager
-    const ui = new UIManager();
-    
-    // initialize managers with dependencies
-    const coursesManager = new CoursesManager(storage, ui);
-    const topicsManager = new TopicsManager(storage, ui);
-    const flashcardsManager = new FlashcardsManager(storage, ui);
-    const studyMode = new StudyMode(ui);
-    
-    // set up manager references
-    topicsManager.setCoursesManager(coursesManager);
-    flashcardsManager.setTopicsManager(topicsManager);
-    
-    // load initial data
-    coursesManager.loadCourses();
-    
-    // connect search functionality
-    setupSearch(coursesManager, topicsManager, flashcardsManager);
-    
-    return {
-        storage,
-        ui,
-        coursesManager,
-        topicsManager,
-        flashcardsManager,
-        studyMode
-    };
+async function initializeApp() {
+    try {
+        // initialize the storage manager
+        const storage = window.storageManager || new StorageManager();
+        
+        // initialize ui manager
+        const ui = new UIManager();
+        
+        // initialize managers with dependencies
+        const coursesManager = new CoursesManager(storage, ui);
+        const topicsManager = new TopicsManager(storage, ui);
+        const flashcardsManager = new FlashcardsManager(storage, ui);
+        const studyMode = new StudyMode(ui);
+        
+        // set up manager references
+        topicsManager.setCoursesManager(coursesManager);
+        topicsManager.setFlashcardsManager(flashcardsManager);
+        flashcardsManager.setTopicsManager(topicsManager);
+        
+        // Test database connectivity and load initial data
+        ui.showNotification('Connecting to database...', 'info');
+        
+        try {
+            await coursesManager.loadCourses();
+            ui.showNotification('Connected to database successfully!', 'success');
+        } catch (error) {
+            console.error('Database connection failed:', error);
+            ui.showNotification('Failed to connect to database. Please check your connection and try refreshing the page.', 'error');
+            ui.showSection('welcome');
+        }
+        
+        // connect search functionality
+        setupSearch(coursesManager, topicsManager, flashcardsManager);
+        
+        // store global reference for debugging
+        window.app = {
+            storage,
+            ui,
+            coursesManager,
+            topicsManager,
+            flashcardsManager,
+            studyMode
+        };
+        
+        return window.app;
+    } catch (error) {
+        console.error('Failed to initialize app:', error);
+        const ui = new UIManager();
+        ui.showNotification('Failed to initialize application', 'error');
+    }
 }
 
 /**
@@ -84,17 +102,21 @@ function initTheme() {
 function setupSearch(coursesManager, topicsManager, flashcardsManager) {
     const searchInput = document.getElementById('search-input');
     
-    searchInput.addEventListener('input', debounce(function() {
+    searchInput.addEventListener('input', debounce(async function() {
         const searchTerm = this.value.trim().toLowerCase();
         if (searchTerm.length >= 2) {
-            const results = {
-                courses: coursesManager.searchCourses(searchTerm),
-                topics: topicsManager.searchTopics(searchTerm),
-                flashcards: flashcardsManager.searchFlashcards(searchTerm)
-            };
-            
-            // highlight search results in the ui
-            highlightSearchResults(results, searchTerm);
+            try {
+                const results = {
+                    courses: await coursesManager.searchCourses(searchTerm),
+                    topics: await topicsManager.searchTopics(searchTerm),
+                    flashcards: await flashcardsManager.searchFlashcards(searchTerm)
+                };
+                
+                // highlight search results in the ui
+                highlightSearchResults(results, searchTerm);
+            } catch (error) {
+                console.error('Search failed:', error);
+            }
         } else {
             // clear any search highlighting
             clearSearchHighlighting();
@@ -239,8 +261,19 @@ function setupUIAnimations() {
     }, true);
     
     // add ripple effect to buttons
-    document.querySelectorAll('button').forEach(button => {
-        button.addEventListener('click', function(e) {
+    function addRippleToButton(button) {
+        // Skip ripple effect for modal-related buttons to prevent conflicts
+        if (button.classList.contains('edit-flashcard-btn') || 
+            button.classList.contains('delete-flashcard-btn') ||
+            button.classList.contains('close-button') ||
+            button.classList.contains('icon-button') ||
+            button.id.includes('modal') ||
+            button.closest('.modal') ||
+            button.closest('.flashcard-actions')) {
+            return;
+        }
+        
+        button.addEventListener('click', function(e) {            
             const rect = this.getBoundingClientRect();
             const size = Math.max(rect.width, rect.height) * 2;
             
@@ -259,6 +292,29 @@ function setupUIAnimations() {
                 ripple.remove();
             }, 600);
         });
+    }
+    
+    // Apply to existing buttons
+    document.querySelectorAll('button').forEach(addRippleToButton);
+    
+    // Watch for new buttons being added
+    const buttonObserver = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType === 1) { // Element node
+                    if (node.tagName === 'BUTTON') {
+                        addRippleToButton(node);
+                    }
+                    // Also check for buttons within added elements
+                    node.querySelectorAll && node.querySelectorAll('button').forEach(addRippleToButton);
+                }
+            });
+        });
+    });
+    
+    buttonObserver.observe(document.body, {
+        childList: true,
+        subtree: true
     });
 }
 

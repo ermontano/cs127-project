@@ -7,12 +7,18 @@ class TopicsManager {
         this.currentCourseId = null;
         this.currentTopicId = null;
         this.coursesManager = null;
+        this.flashcardsManager = null;
         this.initEventListeners();
     }
 
     // inject courses manager reference
     setCoursesManager(coursesManager) {
         this.coursesManager = coursesManager;
+    }
+
+    // inject flashcards manager reference
+    setFlashcardsManager(flashcardsManager) {
+        this.flashcardsManager = flashcardsManager;
     }
 
     // set up UI event listeners
@@ -32,10 +38,15 @@ class TopicsManager {
             if (topicCard) this.selectTopic(topicCard.dataset.id);
         });
 
-        document.getElementById('edit-topic-btn').addEventListener('click', () => {
+        document.getElementById('edit-topic-btn').addEventListener('click', async () => {
             if (!this.currentTopicId) return;
-            const topic = this.getTopicById(this.currentTopicId);
-            if (topic) this.ui.openModal('topic', topic);
+            try {
+                const topic = await this.getTopicById(this.currentTopicId);
+                if (topic) this.ui.openModal('topic', topic);
+            } catch (error) {
+                console.error('Error loading topic for editing:', error);
+                this.ui.showNotification('Failed to load topic data', 'error');
+            }
         });
 
         document.getElementById('delete-topic-btn').addEventListener('click', () => {
@@ -58,28 +69,43 @@ class TopicsManager {
     }
 
     // get a topic by id
-    getTopicById(topicId) {
-        const topics = this.storage.getTopics();
-        return topics.find(topic => topic.id === topicId) || null;
+    async getTopicById(topicId) {
+        try {
+            return await this.storage.getTopicById(topicId);
+        } catch (error) {
+            console.error('Error getting topic by ID:', error);
+            return null;
+        }
     }
 
     // select and load a topic
-    selectTopic(topicId) {
-        this.currentTopicId = topicId;
-        const topic = this.getTopicById(topicId);
-        if (!topic) return;
+    async selectTopic(topicId) {
+        try {
+            this.currentTopicId = topicId;
+            const topic = await this.getTopicById(topicId);
+            if (!topic) return;
 
-        this.currentCourseId = topic.courseId;
-        this.ui.renderTopicDetails(topic);
+            this.currentCourseId = topic.courseId;
+            
+            // Notify FlashcardsManager of the current topic
+            if (this.flashcardsManager) {
+                this.flashcardsManager.setCurrentTopicId(topicId);
+            }
+            
+            this.ui.renderTopicDetails(topic);
 
-        const flashcards = this.storage.getFlashcardsByTopic(topicId);
-        this.ui.renderFlashcardsList(flashcards);
+            const flashcards = await this.storage.getFlashcardsByTopic(topicId);
+            this.ui.renderFlashcardsList(flashcards);
 
-        this.ui.showSection('topic');
+            this.ui.showSection('topic');
+        } catch (error) {
+            console.error('Error selecting topic:', error);
+            this.ui.showNotification('Failed to load topic', 'error');
+        }
     }
 
     // create or update a topic
-    saveTopic() {
+    async saveTopic() {
         const title = document.getElementById('topic-name').value.trim();
         const description = document.getElementById('topic-desc').value.trim();
 
@@ -88,61 +114,85 @@ class TopicsManager {
             return;
         }
 
-        const isEditing = this.currentTopicId &&
-            document.getElementById('topic-modal-title').textContent.startsWith('Edit');
+        try {
+            const modalTitle = document.getElementById('topic-modal-title').textContent.toLowerCase();
+            const isEditing = this.currentTopicId && modalTitle.startsWith('edit');
 
-        if (isEditing) {
-            const topic = this.getTopicById(this.currentTopicId);
-            if (topic) {
-                topic.title = title;
-                topic.description = description;
-                topic.updatedAt = new Date();
-                this.storage.saveTopic(topic);
-                this.ui.showNotification('Topic updated successfully', 'success');
-                this.selectTopic(this.currentTopicId);
+            console.log('Save topic - modalTitle:', modalTitle, 'isEditing:', isEditing, 'currentTopicId:', this.currentTopicId);
+
+            if (isEditing) {
+                const topic = await this.getTopicById(this.currentTopicId);
+                if (topic) {
+                    console.log('Editing topic with ID:', topic.id, topic);
+                    topic.title = title;
+                    topic.description = description;
+                    topic.updatedAt = new Date();
+                    await this.storage.saveTopic(topic);
+                    this.ui.showNotification('Topic updated successfully', 'success');
+                    
+                    // Refresh the course topics list (go back to course view)
+                    if (this.coursesManager) {
+                        await this.coursesManager.selectCourse(this.currentCourseId);
+                    }
+                }
+            } else {
+                console.log('Creating new topic');
+                const newTopic = new Topic(this.currentCourseId, title, description);
+                const savedTopic = await this.storage.saveTopic(newTopic);
+                this.ui.showNotification('Topic created successfully', 'success');
+                this.currentTopicId = savedTopic.id;
+                if (this.coursesManager) {
+                    await this.coursesManager.selectCourse(this.currentCourseId);
+                }
             }
-        } else {
-            const newTopic = new Topic(this.currentCourseId, title, description);
-            this.storage.saveTopic(newTopic);
-            this.ui.showNotification('Topic created successfully', 'success');
-            this.currentTopicId = newTopic.id;
-            if (this.coursesManager) {
-                this.coursesManager.selectCourse(this.currentCourseId);
-            }
+
+            this.ui.closeAllModals();
+        } catch (error) {
+            console.error('Error saving topic:', error);
+            this.ui.showNotification('Failed to save topic', 'error');
         }
-
-        this.ui.closeAllModals();
     }
 
     // delete a topic and refresh the course view
-    deleteTopic(topicId) {
-        const topic = this.getTopicById(topicId);
-        if (!topic) return;
+    async deleteTopic(topicId) {
+        try {
+            const topic = await this.getTopicById(topicId);
+            if (!topic) return;
 
-        const courseId = topic.courseId;
-        const success = this.storage.deleteTopic(topicId);
+            const courseId = topic.courseId;
+            const success = await this.storage.deleteTopic(topicId);
 
-        if (success) {
-            this.ui.showNotification('Topic deleted successfully', 'success');
-            if (this.currentTopicId === topicId) {
-                this.currentTopicId = null;
+            if (success) {
+                this.ui.showNotification('Topic deleted successfully', 'success');
+                if (this.currentTopicId === topicId) {
+                    this.currentTopicId = null;
+                }
+                if (this.coursesManager) {
+                    await this.coursesManager.selectCourse(courseId);
+                }
+            } else {
+                this.ui.showNotification('Failed to delete topic', 'error');
             }
-            if (this.coursesManager) {
-                this.coursesManager.selectCourse(courseId);
-            }
-        } else {
+        } catch (error) {
+            console.error('Error deleting topic:', error);
             this.ui.showNotification('Failed to delete topic', 'error');
         }
     }
 
     // search for topics by keyword
-    searchTopics(term) {
+    async searchTopics(term) {
         if (!term) return [];
 
-        term = term.toLowerCase();
-        return this.storage.getTopics().filter(topic =>
-            topic.title.toLowerCase().includes(term) ||
-            (topic.description && topic.description.toLowerCase().includes(term))
-        );
+        try {
+            term = term.toLowerCase();
+            const topics = await this.storage.getTopics();
+            return topics.filter(topic =>
+                topic.title.toLowerCase().includes(term) ||
+                (topic.description && topic.description.toLowerCase().includes(term))
+            );
+        } catch (error) {
+            console.error('Error searching topics:', error);
+            return [];
+        }
     }
 }

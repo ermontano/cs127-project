@@ -20,11 +20,6 @@ class UIManager {
 
     // initialize ui event listeners
     initializeUIEvents() {
-        // welcome screen
-        document.getElementById('welcome-create-course').addEventListener('click', () => {
-            this.openModal('course');
-        });
-        
         // modal close buttons
         document.querySelectorAll('.close-button, [id^=cancel-][id$=-btn]').forEach(button => {
             button.addEventListener('click', () => {
@@ -37,6 +32,44 @@ class UIManager {
             content.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
+            
+            // Prevent text selection events from bubbling to modal backdrop
+            content.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+            
+            content.addEventListener('mouseup', (e) => {
+                e.stopPropagation();
+            });
+            
+            content.addEventListener('selectstart', (e) => {
+                e.stopPropagation();
+            });
+        });
+        
+        // add backdrop click listeners to all modals
+        [this.courseModal, this.topicModal, this.flashcardModal, this.confirmModal].forEach(modal => {
+            if (modal) {
+                modal.addEventListener('mousedown', (e) => {
+                    // Store where the mousedown happened
+                    modal._mouseDownTarget = e.target;
+                });
+                
+                modal.addEventListener('click', (e) => {
+                    // Only close if both mousedown and click happened on the backdrop (modal itself)
+                    // This prevents text selection from closing the modal
+                    if (e.target === modal && modal._mouseDownTarget === modal) {
+                        this.closeAllModals();
+                    }
+                    // Clear the stored target
+                    modal._mouseDownTarget = null;
+                });
+                
+                // Prevent modal from closing during text selection
+                modal.addEventListener('selectstart', (e) => {
+                    e.stopPropagation();
+                });
+            }
         });
         
         // navigation
@@ -52,11 +85,6 @@ class UIManager {
         document.getElementById('flip-card-btn').addEventListener('click', () => {
             const flashcard = document.getElementById('study-flashcard');
             flashcard.classList.toggle('flipped');
-        });
-
-        // ensure modal content clicks do not close the modal
-        this.courseModal.addEventListener('click', (e) => {
-            e.stopPropagation();
         });
     }
 
@@ -234,6 +262,15 @@ class UIManager {
     // @param {string} type - the type of modal to open ('course', 'topic', 'flashcard', or 'confirm')
     // @param {object} data - optional data to populate the modal with
     openModal(type, data = null) {
+        console.log('Opening modal:', type, data ? 'with data' : 'without data');
+        
+        // Prevent opening if already opening a modal
+        if (this._openingModal) {
+            console.log('Modal already opening, ignoring request');
+            return;
+        }
+        this._openingModal = true;
+        
         // close any open modals first
         this.closeAllModals();
         
@@ -269,11 +306,18 @@ class UIManager {
                 titleElement = document.getElementById('flashcard-modal-title');
                 if (data) {
                     isEdit = true;
-                    document.getElementById('flashcard-question').value = data.question;
-                    document.getElementById('flashcard-answer').value = data.answer;
+                    const questionInput = document.getElementById('flashcard-question');
+                    const answerInput = document.getElementById('flashcard-answer');
+                    questionInput.value = data.question;
+                    answerInput.value = data.answer;
+                    // Store the flashcard ID for editing
+                    questionInput.setAttribute('data-flashcard-id', data.id);
+                    console.log('Editing flashcard with ID:', data.id);
                 } else {
                     document.getElementById('flashcard-question').value = '';
                     document.getElementById('flashcard-answer').value = '';
+                    // Clear any existing flashcard ID
+                    document.getElementById('flashcard-question').removeAttribute('data-flashcard-id');
                 }
                 break;
             case 'confirm':
@@ -295,19 +339,33 @@ class UIManager {
 
         if (modal) {
             modal.classList.add('show');
-            setTimeout(() => { modal.style.opacity = '1'; }, 10);
+            setTimeout(() => { 
+                modal.style.opacity = '1'; 
+                this._openingModal = false; // Allow new modals after this one is fully open
+            }, 10);
             const firstInput = modal.querySelector('input, textarea');
             if (firstInput) {
-                setTimeout(() => { firstInput.focus(); }, 300);
+                setTimeout(() => { 
+                    firstInput.focus();
+                    // Prevent text selection from immediately closing modal
+                    firstInput.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                    }, { once: true });
+                }, 350);
             }
+            console.log('Modal opened successfully:', type);
+        } else {
+            this._openingModal = false;
         }
     }
 
     // close all modals
     closeAllModals() {
+        console.log('Closing all modals - called from:', new Error().stack.split('\n')[2]);
         const modals = [this.courseModal, this.topicModal, this.flashcardModal, this.confirmModal];
         modals.forEach(modal => {
-            if (modal.classList.contains('show')) {
+            if (modal && modal.classList.contains('show')) {
+                console.log('Closing modal:', modal.id);
                 modal.style.opacity = '0';
                 setTimeout(() => { modal.classList.remove('show'); }, 300);
             }
