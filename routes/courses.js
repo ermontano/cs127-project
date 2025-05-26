@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
 
-// GET /api/courses - Get all courses
+// GET /api/courses - Get all courses for the authenticated user
 router.get('/', async (req, res) => {
     try {
-        const courses = await Course.findAll();
+        const courses = await Course.findAll(req.session.userId);
         res.json({
             success: true,
             data: courses
@@ -34,7 +34,7 @@ router.get('/:id', async (req, res) => {
             });
         }
         
-        const course = await Course.findById(numericId);
+        const course = await Course.findById(numericId, req.session.userId);
         if (!course) {
             return res.status(404).json({
                 success: false,
@@ -73,7 +73,7 @@ router.post('/', async (req, res) => {
         }
 
         console.log('📝 Creating Course instance...');
-        const course = new Course(title, description);
+        const course = new Course(title, description, req.session.userId);
         console.log('📝 Course instance created, calling save...');
         const savedCourse = await course.save();
         console.log('✅ Course saved successfully:', savedCourse);
@@ -116,7 +116,7 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        const existingCourse = await Course.findById(numericId);
+        const existingCourse = await Course.findById(numericId, req.session.userId);
         if (!existingCourse) {
             return res.status(404).json({
                 success: false,
@@ -160,7 +160,7 @@ router.delete('/:id', async (req, res) => {
             });
         }
         
-        const deletedCourse = await Course.delete(numericId);
+        const deletedCourse = await Course.delete(numericId, req.session.userId);
         
         if (!deletedCourse) {
             return res.status(404).json({

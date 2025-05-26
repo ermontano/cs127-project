@@ -7,7 +7,7 @@ const dbConfig = {
     port: process.env.DB_PORT || 5432,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME || 'flashcards_db',
+    database: process.env.DB_NAME || 'CMSC127',
     // Connection pool settings
     max: 20, // maximum number of clients in the pool
     idleTimeoutMillis: 30000, // how long a client is allowed to remain idle

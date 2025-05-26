@@ -20,6 +20,34 @@
                     <input type="text" id="search-input" placeholder="Search...">
                     <i class="fas fa-search"></i>
                 </div>
+                <div class="user-info">
+                    <span id="user-greeting" class="user-greeting">Loading...</span>
+                    <div class="user-menu">
+                        <button id="user-menu-toggle" class="icon-button">
+                            <i class="fas fa-user"></i>
+                        </button>
+                        <div id="user-dropdown" class="user-dropdown hidden">
+                            <div class="user-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Courses:</span>
+                                    <span id="courses-count">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Topics:</span>
+                                    <span id="topics-count">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Flashcards:</span>
+                                    <span id="flashcards-count">0</span>
+                                </div>
+                            </div>
+                            <hr>
+                            <button id="logout-btn" class="dropdown-item">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <button id="theme-toggle" class="icon-button">
                     <i class="fas fa-moon"></i>
                 </button>
@@ -46,8 +74,8 @@
                 <section id="welcome-screen" class="welcome-screen">
                     <div class="welcome-content">
                         <i class="fas fa-book-open welcome-icon"></i>
-                        <h2>Welcome to Flashcards Maker</h2>
-                        <p>Create and organize your study materials with flashcards</p>
+                        <h2 id="welcome-title">Welcome to Flashcards Maker</h2>
+                        <p id="welcome-subtitle">Create and organize your study materials with flashcards</p>
                         <button id="welcome-create-course" class="primary-button">
                             <i class="fas fa-plus"></i> Create Your First Course
                         </button>
@@ -264,6 +292,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/auth.js"></script>
     <script src="js/models.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/ui.js"></script>
@@ -276,6 +305,21 @@
         // Initialize storage manager (database only)
         window.storageManager = new StorageManager();
         console.log('🔗 Using database storage');
+        
+        // Check authentication status
+        fetch('/api/auth/status', { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success || !data.authenticated) {
+                    // Redirect to auth page if not authenticated
+                    window.location.href = '/auth.html';
+                }
+            })
+            .catch(error => {
+                console.error('Authentication check failed:', error);
+                // Redirect to auth page on error
+                window.location.href = '/auth.html';
+            });
     </script>
 </body>
 </html>

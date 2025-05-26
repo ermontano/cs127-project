@@ -64,7 +64,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        const flashcard = new Flashcard(topicId, question, answer);
+        const flashcard = new Flashcard(topicId, question, answer, req.session.userId);
         const savedFlashcard = await flashcard.save();
         
         res.status(201).json({

@@ -1,11 +1,14 @@
 const express = require('express');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const path = require('path');
+const cors = require('cors');
 require('dotenv').config();
 
 // Import database configuration
-const { testConnection } = require('./config/database');
+const { testConnection, pool } = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,31 +18,50 @@ if (process.env.TRUST_PROXY === 'true') {
     app.set('trust proxy', true);
 }
 
+// CORS configuration for development
+if (process.env.NODE_ENV !== 'production') {
+    app.use(cors({
+        origin: true, // Allow same origin
+        credentials: true // Allow credentials (cookies)
+    }));
+}
+
 // Import routes
 const coursesRoutes = require('./routes/courses');
 const topicsRoutes = require('./routes/topics');
 const flashcardsRoutes = require('./routes/flashcards');
 const setupRoutes = require('./routes/setup');
+const { router: authRoutes, requireAuth, requireAuthPage, attachUser } = require('./routes/auth');
 
-// Security middleware
+// Security middleware with relaxed settings for development
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "blob:"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "blob:", "http://localhost:3000"],
+            scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'"]
+            mediaSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "http://localhost:3000"]
         }
     }
 }));
 
-// Rate limiting
+// Rate limiting (more lenient in development)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.'
+    max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 requests in dev, 100 in production
+    message: 'Too many requests from this IP, please try again later.',
+    skip: (req) => {
+        // Skip rate limiting for static files in development
+        if (process.env.NODE_ENV !== 'production' && 
+            (req.url.endsWith('.css') || req.url.endsWith('.js') || req.url.endsWith('.html'))) {
+            return true;
+        }
+        return false;
+    }
 });
 app.use(limiter);
 
@@ -47,13 +69,30 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files (your frontend)
-app.use(express.static(path.join(__dirname)));
+// Session configuration
+app.use(session({
+    store: new pgSession({
+        pool: pool,
+        tableName: 'session'
+    }),
+    secret: process.env.SESSION_SECRET || 'your-super-secret-key-change-this-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// Attach user middleware for all routes
+app.use(attachUser);
 
 // API routes
-app.use('/api/courses', coursesRoutes);
-app.use('/api/topics', topicsRoutes);
-app.use('/api/flashcards', flashcardsRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/courses', requireAuth, coursesRoutes);
+app.use('/api/topics', requireAuth, topicsRoutes);
+app.use('/api/flashcards', requireAuth, flashcardsRoutes);
 app.use('/api/setup', setupRoutes);
 
 // Health check endpoint
@@ -159,10 +198,44 @@ app.post('/api/test/create-sample', async (req, res) => {
     }
 });
 
-// Serve the frontend for any non-API routes
+// Root route always shows auth page
+app.get('/', (req, res) => {
+    console.log('📍 Root route accessed');
+    console.log('🔍 Session data:', req.session);
+    console.log('👤 User ID:', req.session?.userId);
+    
+    // If user is already authenticated, redirect to main app
+    if (req.session && req.session.userId) {
+        console.log('✅ User authenticated, redirecting to /app');
+        return res.redirect('/app');
+    }
+    
+    console.log('🔓 User not authenticated, serving auth.html');
+    res.sendFile(path.join(__dirname, 'auth.html'));
+});
+
+// Protected route for main app
+app.get('/app', requireAuthPage, (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Legacy auth route (redirect to root)
+app.get('/auth', (req, res) => {
+    res.redirect('/');
+});
+
+// Serve static files (after specific routes)
+app.use(express.static(path.join(__dirname)));
+
+// Serve the frontend for any other non-API routes (protected)
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, 'index.html'));
+        // If not authenticated, redirect to root (auth page)
+        if (!req.session || !req.session.userId) {
+            return res.redirect('/');
+        }
+        // If authenticated but trying to access unknown route, redirect to app
+        return res.redirect('/app');
     } else {
         res.status(404).json({
             success: false,

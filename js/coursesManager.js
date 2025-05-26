@@ -10,8 +10,17 @@ class CoursesManager {
         this.storage = storage;
         this.ui = ui;
         this.currentCourseId = null;
+        this.topicsManager = null;
 
         this.initEventListeners();
+    }
+
+    /**
+     * set the topics manager reference
+     * @param {TopicsManager} topicsManager
+     */
+    setTopicsManager(topicsManager) {
+        this.topicsManager = topicsManager;
     }
 
     initEventListeners() {
@@ -167,6 +176,11 @@ class CoursesManager {
             
             // show the course view
             this.ui.showSection('course');
+
+            // Notify the topics manager when a course is selected
+            if (this.topicsManager) {
+                this.topicsManager.setCurrentCourseId(courseId);
+            }
         } catch (error) {
             console.error('Error selecting course:', error);
             this.ui.showNotification('Failed to load course', 'error');

@@ -1,11 +1,12 @@
 const db = require('../config/database');
 
 class Flashcard {
-    constructor(topicId, question, answer) {
+    constructor(topicId, question, answer, userId = null) {
         // Remove ID generation - let PostgreSQL handle it with SERIAL
         this.topicId = parseInt(topicId); // Ensure integer
         this.question = question;
         this.answer = answer;
+        this.userId = userId; // Add user ID for authentication
         this.createdAt = new Date();
         this.updatedAt = new Date();
         this.lastReviewed = null;
@@ -23,12 +24,12 @@ class Flashcard {
     async save() {
         try {
             const query = `
-                INSERT INTO flashcards (topic_id, question, answer, created_at, updated_at, last_reviewed, review_count)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO flashcards (topic_id, question, answer, user_id, created_at, updated_at, last_reviewed, review_count)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING *
             `;
             const values = [
-                this.topicId, this.question, this.answer, 
+                this.topicId, this.question, this.answer, this.userId,
                 this.createdAt, this.updatedAt, this.lastReviewed, this.reviewCount
             ];
             const result = await db.query(query, values);

@@ -30,6 +30,7 @@ async function initializeApp() {
         const studyMode = new StudyMode(ui);
         
         // set up manager references
+        coursesManager.setTopicsManager(topicsManager);
         topicsManager.setCoursesManager(coursesManager);
         topicsManager.setFlashcardsManager(flashcardsManager);
         flashcardsManager.setTopicsManager(topicsManager);

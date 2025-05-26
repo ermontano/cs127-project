@@ -1,18 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const Topic = require('../models/Topic');
+const { isAuthenticated } = require('../middleware/auth');
+
+// Apply authentication middleware to all routes
+router.use(isAuthenticated);
 
 // GET /api/topics - Get all topics or topics by course
 router.get('/', async (req, res) => {
     try {
         const { courseId } = req.query;
-        let topics;
+        const userId = req.session.userId;
         
-        if (courseId) {
-            topics = await Topic.findByCourseId(courseId);
-        } else {
-            topics = await Topic.findAll();
+        if (!courseId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Course ID is required'
+            });
         }
+
+        const topics = await Topic.findByCourseId(courseId, userId);
         
         res.json({
             success: true,
@@ -31,7 +38,8 @@ router.get('/', async (req, res) => {
 // GET /api/topics/:id - Get a specific topic
 router.get('/:id', async (req, res) => {
     try {
-        const topic = await Topic.findById(req.params.id);
+        const userId = req.session.userId;
+        const topic = await Topic.findById(req.params.id, userId);
         if (!topic) {
             return res.status(404).json({
                 success: false,
@@ -56,15 +64,23 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { courseId, title, description } = req.body;
+        const userId = req.session.userId;
         
-        if (!courseId || !title) {
+        if (!title) {
             return res.status(400).json({
                 success: false,
-                message: 'Course ID and topic title are required'
+                message: 'Topic title is required'
             });
         }
 
-        const topic = new Topic(courseId, title, description);
+        if (!courseId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Course ID is required'
+            });
+        }
+
+        const topic = new Topic(courseId, title, description, userId);
         const savedTopic = await topic.save();
         
         res.status(201).json({
@@ -86,6 +102,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { title, description } = req.body;
+        const userId = req.session.userId;
         
         if (!title) {
             return res.status(400).json({
@@ -94,7 +111,7 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        const existingTopic = await Topic.findById(req.params.id);
+        const existingTopic = await Topic.findById(req.params.id, userId);
         if (!existingTopic) {
             return res.status(404).json({
                 success: false,
@@ -103,9 +120,10 @@ router.put('/:id', async (req, res) => {
         }
 
         // Create a topic instance and update it
-        const topic = Object.assign(new Topic(), existingTopic);
+        const topic = Object.assign(new Topic(existingTopic.courseId), existingTopic);
         topic.title = title;
         topic.description = description;
+        topic.userId = userId;
         
         const updatedTopic = await topic.update();
         
@@ -127,7 +145,8 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/topics/:id - Delete a topic
 router.delete('/:id', async (req, res) => {
     try {
-        const deletedTopic = await Topic.delete(req.params.id);
+        const userId = req.session.userId;
+        const deletedTopic = await Topic.delete(req.params.id, userId);
         
         if (!deletedTopic) {
             return res.status(404).json({

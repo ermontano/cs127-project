@@ -4,8 +4,8 @@ class TopicsManager {
     constructor(storage, ui) {
         this.storage = storage;
         this.ui = ui;
-        this.currentCourseId = null;
         this.currentTopicId = null;
+        this.currentCourseId = null;
         this.coursesManager = null;
         this.flashcardsManager = null;
         this.initEventListeners();
@@ -23,43 +23,53 @@ class TopicsManager {
 
     // set up UI event listeners
     initEventListeners() {
-        document.getElementById('topic-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveTopic();
-        });
+        // Save topic button
+        document.getElementById('save-topic-btn')?.addEventListener('click', () => this.saveTopic());
 
-        document.getElementById('add-topic-btn').addEventListener('click', () => {
-            this.currentCourseId = this.coursesManager.currentCourseId;
-            this.ui.openModal('topic');
-        });
-
-        document.getElementById('topics-grid').addEventListener('click', (e) => {
-            const topicCard = e.target.closest('.topic-card');
-            if (topicCard) this.selectTopic(topicCard.dataset.id);
-        });
-
-        document.getElementById('edit-topic-btn').addEventListener('click', async () => {
-            if (!this.currentTopicId) return;
-            try {
-                const topic = await this.getTopicById(this.currentTopicId);
-                if (topic) this.ui.openModal('topic', topic);
-            } catch (error) {
-                console.error('Error loading topic for editing:', error);
-                this.ui.showNotification('Failed to load topic data', 'error');
+        // Delete topic button
+        document.getElementById('delete-topic-btn')?.addEventListener('click', () => {
+            if (this.currentTopicId) {
+                const confirmDelete = confirm('Are you sure you want to delete this topic? All flashcards in this topic will also be deleted.');
+                if (confirmDelete) {
+                    this.deleteTopic(this.currentTopicId);
+                }
             }
         });
 
-        document.getElementById('delete-topic-btn').addEventListener('click', () => {
-            if (!this.currentTopicId) return;
-            this.ui.openModal('confirm', {
-                title: 'Delete Topic',
-                message: 'Are you sure you want to delete this topic? This will also delete all flashcards within it.',
-                confirmText: 'Delete',
-                onConfirm: () => {
-                    this.deleteTopic(this.currentTopicId);
-                    this.ui.closeAllModals();
-                }
-            });
+        // Add topic button
+        document.getElementById('add-topic-btn')?.addEventListener('click', () => {
+            if (!this.currentCourseId) {
+                this.ui.showNotification('Please select a course first', 'error');
+                return;
+            }
+            this.showTopicModal();
+        });
+
+        // Topic grid click handlers
+        document.getElementById('topics-grid')?.addEventListener('click', (e) => {
+            const topicCard = e.target.closest('.topic-card');
+            if (!topicCard) return;
+
+            const topicId = topicCard.dataset.id;
+            if (!topicId) return;
+
+            // If edit button was clicked
+            if (e.target.classList.contains('edit-topic-btn')) {
+                this.showTopicModal(topicId);
+                return;
+            }
+
+            // Otherwise, select the topic
+            this.selectTopic(topicId);
+        });
+
+        // Course assignment form submit
+        document.getElementById('course-assignment-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const courseSelect = document.getElementById('course-select');
+            if (courseSelect && this.currentTopicId) {
+                this.assignCourse(this.currentTopicId, courseSelect.value);
+            }
         });
     }
 
@@ -73,7 +83,7 @@ class TopicsManager {
         try {
             return await this.storage.getTopicById(topicId);
         } catch (error) {
-            console.error('Error getting topic by ID:', error);
+            console.error('Error fetching topic:', error);
             return null;
         }
     }
@@ -81,13 +91,19 @@ class TopicsManager {
     // select and load a topic
     async selectTopic(topicId) {
         try {
-            this.currentTopicId = topicId;
             const topic = await this.getTopicById(topicId);
-            if (!topic) return;
-
-            this.currentCourseId = topic.courseId;
+            if (!topic) {
+                this.ui.showNotification('Topic not found', 'error');
+                return;
+            }
             
-            // Notify FlashcardsManager of the current topic
+            this.currentTopicId = topic.id;
+            
+            if (this.coursesManager && topic.courseId) {
+                this.currentCourseId = topic.courseId;
+            }
+            
+            // Notify flashcards manager about the selected topic
             if (this.flashcardsManager) {
                 this.flashcardsManager.setCurrentTopicId(topicId);
             }
@@ -104,7 +120,43 @@ class TopicsManager {
         }
     }
 
-    // create or update a topic
+    // Show topic creation/edit modal
+    showTopicModal(topicId = null) {
+        if (!this.currentCourseId && !topicId) {
+            this.ui.showNotification('Please select a course first', 'error');
+            return;
+        }
+
+        if (topicId) {
+            // For editing, load the topic data first
+            this.currentTopicId = topicId;
+            this.getTopicById(topicId).then(topic => {
+                if (topic) {
+                    this.ui.openModal('topic', topic);
+                } else {
+                    this.ui.showNotification('Failed to load topic data', 'error');
+                }
+            });
+        } else {
+            // For creating a new topic
+            this.currentTopicId = null;
+            this.ui.openModal('topic');
+        }
+    }
+
+    // Show course assignment modal
+    async showCourseAssignmentModal() {
+        try {
+            // Fetch available courses
+            const courses = await this.storage.getCourses();
+            this.ui.openModal('course-assignment', { courses });
+        } catch (error) {
+            console.error('Error loading courses:', error);
+            this.ui.showNotification('Failed to load courses', 'error');
+        }
+    }
+
+    // Save topic
     async saveTopic() {
         const title = document.getElementById('topic-name').value.trim();
         const description = document.getElementById('topic-desc').value.trim();
@@ -114,43 +166,108 @@ class TopicsManager {
             return;
         }
 
+        if (!this.currentCourseId && !this.currentTopicId) {
+            this.ui.showNotification('Please select a course first', 'error');
+            return;
+        }
+
         try {
             const modalTitle = document.getElementById('topic-modal-title').textContent.toLowerCase();
             const isEditing = this.currentTopicId && modalTitle.startsWith('edit');
 
-            console.log('Save topic - modalTitle:', modalTitle, 'isEditing:', isEditing, 'currentTopicId:', this.currentTopicId);
-
             if (isEditing) {
                 const topic = await this.getTopicById(this.currentTopicId);
                 if (topic) {
-                    console.log('Editing topic with ID:', topic.id, topic);
                     topic.title = title;
                     topic.description = description;
-                    topic.updatedAt = new Date();
                     await this.storage.saveTopic(topic);
                     this.ui.showNotification('Topic updated successfully', 'success');
                     
-                    // Refresh the course topics list (go back to course view)
-                    if (this.coursesManager) {
-                        await this.coursesManager.selectCourse(this.currentCourseId);
+                    if (topic.courseId && this.coursesManager) {
+                        await this.coursesManager.selectCourse(topic.courseId);
                     }
                 }
             } else {
-                console.log('Creating new topic');
-                const newTopic = new Topic(this.currentCourseId, title, description);
+                const newTopic = {
+                    courseId: this.currentCourseId,
+                    title: title,
+                    description: description
+                };
                 const savedTopic = await this.storage.saveTopic(newTopic);
                 this.ui.showNotification('Topic created successfully', 'success');
                 this.currentTopicId = savedTopic.id;
+
+                // Refresh the course view
                 if (this.coursesManager) {
                     await this.coursesManager.selectCourse(this.currentCourseId);
                 }
             }
 
+            // Close the modal using UIManager
             this.ui.closeAllModals();
         } catch (error) {
             console.error('Error saving topic:', error);
             this.ui.showNotification('Failed to save topic', 'error');
         }
+    }
+
+    // Assign course to topic
+    async assignCourse(topicId, courseId) {
+        try {
+            await this.storage.assignCourse(topicId, courseId);
+            this.ui.showNotification('Course assigned successfully', 'success');
+            
+            // Refresh course view if we have a courses manager
+            if (this.coursesManager) {
+                await this.coursesManager.selectCourse(courseId);
+            }
+            
+            // Close the modal using UIManager
+            this.ui.closeAllModals();
+        } catch (error) {
+            console.error('Error assigning course:', error);
+            this.ui.showNotification('Failed to assign course', 'error');
+        }
+    }
+
+    // Load unassigned topics
+    async loadUnassignedTopics() {
+        try {
+            const topics = await this.storage.getUnassignedTopics();
+            this.displayUnassignedTopics(topics);
+        } catch (error) {
+            console.error('Error loading unassigned topics:', error);
+            this.ui.showNotification('Failed to load unassigned topics', 'error');
+        }
+    }
+
+    // Display unassigned topics in the UI
+    displayUnassignedTopics(topics) {
+        const container = document.getElementById('unassigned-topics-list');
+        if (!container) return;
+
+        container.innerHTML = '';
+        
+        topics.forEach(topic => {
+            const topicElement = document.createElement('div');
+            topicElement.className = 'topic-item';
+            topicElement.innerHTML = `
+                <h3>${topic.title}</h3>
+                <p>${topic.description || 'No description'}</p>
+                <button class="assign-course-btn" data-topic-id="${topic.id}">
+                    Assign to Course
+                </button>
+            `;
+            
+            // Add click handler for assign course button
+            const assignBtn = topicElement.querySelector('.assign-course-btn');
+            assignBtn.addEventListener('click', () => {
+                this.currentTopicId = topic.id;
+                this.showCourseAssignmentModal();
+            });
+            
+            container.appendChild(topicElement);
+        });
     }
 
     // delete a topic and refresh the course view

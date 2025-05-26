@@ -2,6 +2,7 @@
 
 class StorageManager {
     constructor() {
+        // Use window.location.origin to automatically handle both development and production
         this.baseUrl = window.location.origin + '/api';
     }
 
@@ -16,6 +17,7 @@ class StorageManager {
                     'Expires': '0',
                     ...options.headers
                 },
+                credentials: 'same-origin', // Add this to ensure cookies are sent
                 ...options
             });
             
@@ -114,16 +116,14 @@ class StorageManager {
     }
 
     async saveTopic(topic) {
-        // Simplified logic: if topic has an ID, try to update; otherwise create
         if (topic.id) {
             try {
-                // Update existing topic
-                console.log('Updating topic with ID:', topic.id);
                 return await this.apiCall(`/topics/${topic.id}`, {
                     method: 'PUT',
                     body: JSON.stringify({
                         title: topic.title,
-                        description: topic.description
+                        description: topic.description,
+                        courseId: topic.courseId
                     })
                 });
             } catch (error) {
@@ -132,9 +132,6 @@ class StorageManager {
             }
         } else {
             try {
-                // Create new topic
-                console.log('Creating new topic for course:', topic.courseId);
-                this.validateId(topic.courseId, 'course ID');
                 return await this.apiCall('/topics', {
                     method: 'POST',
                     body: JSON.stringify({
@@ -147,6 +144,27 @@ class StorageManager {
                 console.error('Failed to create topic:', error);
                 throw error;
             }
+        }
+    }
+
+    async assignCourse(topicId, courseId) {
+        try {
+            return await this.apiCall(`/topics/${topicId}/assign-course`, {
+                method: 'PUT',
+                body: JSON.stringify({ courseId })
+            });
+        } catch (error) {
+            console.error('Failed to assign course to topic:', error);
+            throw error;
+        }
+    }
+
+    async getUnassignedTopics() {
+        try {
+            return await this.apiCall('/topics/unassigned');
+        } catch (error) {
+            console.error('Failed to fetch unassigned topics:', error);
+            throw error;
         }
     }
 

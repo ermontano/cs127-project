@@ -192,6 +192,97 @@ p {
     pointer-events: none;
 }
 
+/* User Interface Styles */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.user-greeting {
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.user-menu {
+    position: relative;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + var(--spacing-2));
+    right: 0;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-4);
+    min-width: 200px;
+    z-index: 1000;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.user-dropdown.hidden {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+.user-dropdown:not(.hidden) {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.user-stats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-3);
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.user-dropdown hr {
+    border: none;
+    height: 1px;
+    background-color: var(--border-color);
+    margin: var(--spacing-3) 0;
+}
+
+.dropdown-item {
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-3);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+}
+
 .content-container {
     display: flex;
     flex: 1;
@@ -771,6 +862,18 @@ button {
     .header-controls {
         width: 100%;
         justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--spacing-2);
+    }
+
+    .user-info {
+        order: -1;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .user-greeting {
+        font-size: 0.875rem;
     }
     
     .search-container input {
