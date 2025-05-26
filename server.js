@@ -10,8 +10,10 @@ const { testConnection } = require('./config/database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Trust proxy for App Engine
-app.set('trust proxy', true);
+// Trust proxy (only enable if behind a reverse proxy)
+if (process.env.TRUST_PROXY === 'true') {
+    app.set('trust proxy', true);
+}
 
 // Import routes
 const coursesRoutes = require('./routes/courses');
@@ -200,9 +202,9 @@ const startServer = async () => {
             console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
             console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
             
-            // In production, log the public URL
+            // Log environment info
             if (process.env.NODE_ENV === 'production') {
-                console.log(`🌐 Production URL: https://${process.env.GAE_SERVICE || 'your-project'}.appspot.com`);
+                console.log(`📦 Running in production mode`);
             }
         });
         

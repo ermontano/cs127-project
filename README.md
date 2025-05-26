@@ -1,12 +1,11 @@
-# Flashcards Maker with PostgreSQL Backend
+# Flashcards Maker with Local PostgreSQL
 
-A full-stack flashcards application with PostgreSQL database support for both local development and Google Cloud SQL production deployment. **The app now exclusively uses database storage - localStorage has been completely removed.**
+A full-stack flashcards application with local PostgreSQL database support.
 
 ## Features
 
 - 🔗 **Database-first architecture** - All data is stored in PostgreSQL
-- 🌐 **Google Cloud SQL support** for production
-- 🔧 **Local PostgreSQL support** for development
+- 🏠 **Local PostgreSQL support** for development and production
 - 📱 **Responsive design** with modern UI
 - 🎯 **Study mode** with progress tracking
 - 🔍 **Real-time search** across courses, topics, and flashcards
@@ -16,14 +15,13 @@ A full-stack flashcards application with PostgreSQL database support for both lo
 
 - **Frontend**: HTML, CSS, JavaScript (Vanilla)
 - **Backend**: Node.js, Express.js
-- **Database**: PostgreSQL (required)
-- **Cloud**: Google Cloud SQL (optional)
+- **Database**: PostgreSQL (local)
 - **Security**: Helmet, CORS, Rate Limiting
 
 ## Prerequisites
 
 - **Node.js** (v14 or higher)
-- **PostgreSQL** (local installation or Google Cloud SQL instance)
+- **PostgreSQL** (local installation)
 - **npm** package manager
 
 ## Quick Start
@@ -36,17 +34,17 @@ npm install
 
 ### 2. Database Setup
 
-#### For Local Development (PostgreSQL)
-
 1. **Install PostgreSQL** on your system
 2. **Create a database:**
    ```sql
    CREATE DATABASE flashcards_db;
+   CREATE USER your_username WITH PASSWORD 'your_password';
+   GRANT ALL PRIVILEGES ON DATABASE flashcards_db TO your_username;
    ```
 
-3. **Copy environment configuration:**
+3. **Set up environment configuration:**
    ```bash
-   cp env.example .env
+   npm run setup-local
    ```
 
 4. **Update `.env`** with your local database credentials:
@@ -61,26 +59,6 @@ npm install
    ```
 
 5. **Set up database tables:**
-   ```bash
-   npm run setup-db
-   ```
-
-#### For Google Cloud SQL
-
-1. **Create a PostgreSQL instance** in Google Cloud SQL
-2. **Create a database** named `flashcards_db`
-3. **Update `.env`** with your Cloud SQL credentials:
-   ```env
-   DB_HOST=your-cloud-sql-instance-ip
-   DB_PORT=5432
-   DB_NAME=flashcards_db
-   DB_USER=your_cloud_sql_username
-   DB_PASSWORD=your_cloud_sql_password
-   NODE_ENV=production
-   PORT=3000
-   ```
-
-4. **Set up database tables:**
    ```bash
    npm run setup-db
    ```
@@ -195,7 +173,9 @@ The app uses a **database-only architecture** with the following key features:
 ### Scripts
 - `npm start` - Start the server
 - `npm run dev` - Start with nodemon (development)
+- `npm run setup-local` - Set up local environment (.env file)
 - `npm run setup-db` - Initialize database tables
+- `npm run test-connection` - Test database connection
 
 ### Key Changes from localStorage Version
 
@@ -203,33 +183,6 @@ The app uses a **database-only architecture** with the following key features:
 2. **Error Handling**: Comprehensive error handling for database failures
 3. **Database Connectivity**: Automatic connection testing on startup
 4. **No Fallback**: Pure database architecture - no localStorage fallback
-
-## Deployment
-
-### Google Cloud SQL Connection
-
-For Google Cloud SQL, you may need to:
-
-1. **Use Cloud SQL Proxy** (recommended for development):
-   ```bash
-   # Download and run Cloud SQL Proxy
-   ./cloud_sql_proxy -instances=PROJECT_ID:REGION:INSTANCE_NAME=tcp:5432
-   ```
-
-2. **Whitelist your IP** in Google Cloud Console
-3. **Use SSL connection** for production
-
-### Environment Variables for Production
-
-```env
-NODE_ENV=production
-DB_HOST=your-cloud-sql-instance-ip
-DB_PORT=5432
-DB_NAME=flashcards_db
-DB_USER=your_cloud_sql_username
-DB_PASSWORD=your_cloud_sql_password
-PORT=8080
-```
 
 ## Troubleshooting
 
@@ -241,7 +194,6 @@ If you see "Failed to connect to database" errors:
 2. **Verify PostgreSQL is running** - Check if your database server is active
 3. **Test connectivity** - Try connecting to the database using a tool like `psql`
 4. **Check firewall settings** - Ensure the database port is accessible
-5. **For Google Cloud SQL** - Verify IP whitelisting and SSL settings
 
 ### Common Error Messages
 

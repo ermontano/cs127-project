@@ -1,4 +1,4 @@
-# 🔧 Database Connection Troubleshooting Guide
+# 🔧 Local PostgreSQL Troubleshooting Guide
 
 ## Quick Start Commands
 
@@ -6,8 +6,9 @@
 # 1. Install dependencies
 npm install
 
-# 2. Set up environment (interactive)
-npm run setup-env
+# 2. Set up environment
+cp env.example .env
+# Edit .env with your database credentials
 
 # 3. Set up database tables
 npm run setup-db
@@ -65,62 +66,7 @@ GRANT ALL PRIVILEGES ON DATABASE flashcards_db TO your_username;
 psql -h localhost -U your_username -d flashcards_db
 ```
 
-## ☁️ Google Cloud SQL Setup
 
-### Option 1: Direct Connection
-
-1. **Create Cloud SQL Instance:**
-   - Go to Google Cloud Console → SQL
-   - Create PostgreSQL instance
-   - Note: instance IP, username, password
-
-2. **Configure Networking:**
-   - Add your IP to "Authorized networks"
-   - Or use "Allow all IPs" (0.0.0.0/0) for testing
-
-3. **Create Database:**
-   ```sql
-   CREATE DATABASE flashcards_db;
-   ```
-
-4. **Environment Variables:**
-   ```env
-   DB_HOST=your-instance-ip
-   DB_PORT=5432
-   DB_NAME=flashcards_db
-   DB_USER=your_username
-   DB_PASSWORD=your_password
-   USE_SSL=true
-   NODE_ENV=production
-   ```
-
-### Option 2: Cloud SQL Proxy (Recommended)
-
-1. **Download Cloud SQL Proxy:**
-   ```bash
-   # Linux/macOS
-   curl -o cloud_sql_proxy https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
-   chmod +x cloud_sql_proxy
-   
-   # Windows
-   # Download from: https://dl.google.com/cloudsql/cloud_sql_proxy.x64.exe
-   ```
-
-2. **Run Cloud SQL Proxy:**
-   ```bash
-   ./cloud_sql_proxy -instances=PROJECT_ID:REGION:INSTANCE_NAME=tcp:5432
-   ```
-
-3. **Environment Variables:**
-   ```env
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=flashcards_db
-   DB_USER=your_username
-   DB_PASSWORD=your_password
-   USE_CLOUD_SQL_PROXY=true
-   INSTANCE_CONNECTION_NAME=PROJECT_ID:REGION:INSTANCE_NAME
-   ```
 
 ## 🚨 Common Issues and Solutions
 
@@ -159,10 +105,9 @@ psql -h localhost -U your_username -d flashcards_db
    sudo netstat -tlnp | grep 5432
    ```
 
-2. **For Cloud SQL:**
-   - Verify instance IP address
-   - Check firewall rules
-   - Ensure Cloud SQL Proxy is running
+2. **Check PostgreSQL configuration:**
+   - Verify postgresql.conf settings
+   - Check pg_hba.conf for authentication rules
 
 ### Issue 3: "database does not exist"
 
@@ -193,28 +138,45 @@ psql -h localhost -U your_username -d flashcards_db
    ALTER USER your_username PASSWORD 'new_password';
    ```
 
-2. **For Cloud SQL:**
-   - Reset password in Google Cloud Console
-   - Update `.env` file with new password
+2. **Check PostgreSQL user permissions:**
+   ```sql
+   ALTER USER your_username WITH PASSWORD 'new_password';
+   GRANT ALL PRIVILEGES ON DATABASE flashcards_db TO your_username;
+   ```
 
-### Issue 5: Cloud SQL Connection Issues
+### Issue 5: PostgreSQL Service Issues
 
 **Symptoms:**
-- Can't connect to Cloud SQL instance
-- SSL/TLS errors
+- PostgreSQL service not running
+- Connection refused errors
 
 **Solutions:**
-1. **Check IP whitelisting:**
-   - Add your current IP to authorized networks
-   - Get your IP: `curl ifconfig.me`
+1. **Start PostgreSQL service:**
+   ```bash
+   # Linux/Ubuntu
+   sudo systemctl start postgresql
+   sudo systemctl enable postgresql
+   
+   # macOS (with Homebrew)
+   brew services start postgresql
+   
+   # Windows
+   net start postgresql-x64-14
+   ```
 
-2. **Use Cloud SQL Proxy:**
-   - More secure than direct connection
-   - Handles SSL automatically
+2. **Check PostgreSQL status:**
+   ```bash
+   # Linux/Ubuntu
+   sudo systemctl status postgresql
+   
+   # macOS
+   brew services list | grep postgresql
+   ```
 
-3. **Verify instance details:**
-   - Check project ID, region, instance name
-   - Ensure instance is running
+3. **Verify PostgreSQL is listening:**
+   ```bash
+   sudo netstat -tulnp | grep 5432
+   ```
 
 ### Issue 6: "npm run setup-db" Fails
 
@@ -261,7 +223,7 @@ If you're still having issues:
 1. **Check the console logs** for specific error messages
 2. **Verify your `.env` file** matches the examples
 3. **Test database connection** outside of the app
-4. **Check firewall settings** (especially for Cloud SQL)
+4. **Check firewall settings** 
 5. **Ensure database and tables exist**
 
 ## 🔧 Quick Fixes
@@ -270,7 +232,7 @@ If you're still having issues:
 ```bash
 # Delete .env and start over
 rm .env
-npm run setup-env
+npm run setup-local
 
 # Drop and recreate database (local only)
 sudo -u postgres psql -c "DROP DATABASE IF EXISTS flashcards_db;"

@@ -1,39 +1,28 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-console.log('🔍 Database Connection Diagnostic');
-console.log('================================');
+console.log('🔍 Local PostgreSQL Connection Diagnostic');
+console.log('=========================================');
 
 // Show current environment variables
 console.log('Environment variables:');
-console.log(`DB_HOST: ${process.env.DB_HOST}`);
-console.log(`DB_PORT: ${process.env.DB_PORT}`);
-console.log(`DB_NAME: ${process.env.DB_NAME}`);
+console.log(`DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
+console.log(`DB_PORT: ${process.env.DB_PORT || '5432'}`);
+console.log(`DB_NAME: ${process.env.DB_NAME || 'flashcards_db'}`);
 console.log(`DB_USER: ${process.env.DB_USER}`);
 console.log(`DB_PASSWORD: ${process.env.DB_PASSWORD ? '***hidden***' : 'NOT SET'}`);
-console.log(`USE_SSL: ${process.env.USE_SSL}`);
-console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
 console.log('');
 
-// Database configuration
+// Database configuration for local PostgreSQL
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'CMSC127',
+    database: process.env.DB_NAME || 'flashcards_db',
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     connectionTimeoutMillis: 10000,
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 10000,
 };
-
-// For Google Cloud SQL with SSL
-if (process.env.NODE_ENV === 'production' || process.env.USE_SSL === 'true') {
-    dbConfig.ssl = {
-        rejectUnauthorized: false
-    };
-    console.log('🔒 Using SSL connection');
-}
 
 console.log(`🔗 Attempting to connect to: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
 console.log(`👤 Using user: ${dbConfig.user}`);
@@ -43,7 +32,7 @@ const testConnection = async () => {
     const pool = new Pool(dbConfig);
     
     try {
-        console.log('⏳ Connecting to database...');
+        console.log('⏳ Connecting to local PostgreSQL database...');
         const client = await pool.connect();
         
         console.log('✅ Connected successfully!');
@@ -94,11 +83,17 @@ const testConnection = async () => {
         
         client.release();
         console.log('');
-        console.log('🎉 Connection test completed successfully!');
+        console.log('🎉 Local database connection test completed successfully!');
         
     } catch (error) {
         console.error('❌ Connection test failed:', error.message);
         console.error('Full error:', error);
+        console.log('');
+        console.log('💡 Troubleshooting tips:');
+        console.log('1. Make sure PostgreSQL is running locally');
+        console.log('2. Check your database credentials in .env file');
+        console.log('3. Verify the database exists: createdb flashcards_db');
+        console.log('4. Try connecting manually: psql -h localhost -U your_username -d flashcards_db');
     } finally {
         await pool.end();
     }
