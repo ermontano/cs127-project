@@ -2,9 +2,6 @@ const db = require('../config/database');
 
 class Topic {
     constructor(courseId, title, description = '', userId = null) {
-        if (!courseId) {
-            throw new Error('Course ID is required');
-        }
         this.courseId = parseInt(courseId);
         this.userId = userId ? parseInt(userId) : null;
         this.title = title;
