@@ -63,10 +63,13 @@ router.get('/:id', async (req, res) => {
 // POST /api/flashcards - Create a new flashcard
 router.post('/', async (req, res) => {
     try {
-        const { topic_id, question, answer } = req.body;
+        const { topicId, topic_id, question, answer } = req.body;
         const userId = req.session.userId;
         
-        if (!topic_id || !question || !answer) {
+        // Support both topicId (frontend) and topic_id (backend) parameter names
+        const finalTopicId = topicId || topic_id;
+        
+        if (!finalTopicId || !question || !answer) {
             return res.status(400).json({
                 success: false,
                 message: 'Topic ID, question, and answer are required'
@@ -75,7 +78,7 @@ router.post('/', async (req, res) => {
 
         const flashcardData = {
             user_id: userId,
-            topic_id,
+            topic_id: finalTopicId,
             question,
             answer
         };
@@ -100,7 +103,7 @@ router.post('/', async (req, res) => {
 // PUT /api/flashcards/:id - Update a flashcard
 router.put('/:id', async (req, res) => {
     try {
-        const { question, answer, topic_id } = req.body;
+        const { question, answer, topicId, topic_id } = req.body;
         const userId = req.session.userId;
         
         if (!question || !answer) {
@@ -118,10 +121,13 @@ router.put('/:id', async (req, res) => {
             });
         }
 
+        // Support both topicId (frontend) and topic_id (backend) parameter names
+        const finalTopicId = topicId !== undefined ? topicId : (topic_id !== undefined ? topic_id : flashcard.topic_id);
+
         const updatedFlashcard = await flashcard.update({
             question,
             answer,
-            topic_id: topic_id || flashcard.topic_id
+            topic_id: finalTopicId
         });
         
         res.json({

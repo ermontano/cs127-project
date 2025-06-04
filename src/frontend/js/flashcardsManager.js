@@ -13,6 +13,7 @@ class FlashcardsManager {
         this.ui = ui;
         this.currentTopicId = null;
         this.topicsManager = null;
+        this.authManager = null; // For refreshing global stats
 
         // initialize event listeners
         this.initEventListeners();
@@ -27,96 +28,64 @@ class FlashcardsManager {
     }
 
     /**
+     * set auth manager reference
+     * @param {AuthManager} authManager - auth manager instance
+     */
+    setAuthManager(authManager) {
+        this.authManager = authManager;
+    }
+
+    /**
      * initialize event listeners
      */
     initEventListeners() {
         // flashcard form submission
-        document.getElementById('flashcard-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveFlashcard();
-        });
+        const flashcardForm = document.getElementById('flashcard-form');
+        if (flashcardForm) {
+            flashcardForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleSaveFlashcard();
+            });
+        }
 
         // add flashcard button
-        document.getElementById('add-flashcard-btn').addEventListener('click', () => {
-            this.ui.openModal('flashcard');
-        });
+        const addFlashcardBtn = document.getElementById('add-flashcard-btn');
+        if (addFlashcardBtn) {
+            addFlashcardBtn.addEventListener('click', () => {
+                if (!this.currentTopicId) {
+                    this.ui.showNotification('No topic selected to add flashcard to.', 'error');
+                    return;
+                }
+                this.ui.openModal('flashcard');
+            });
+        }
 
         // study flashcards button
-        document.getElementById('study-flashcards-btn').addEventListener('click', async () => {
-            if (this.currentTopicId) {
-                try {
-                    const flashcards = await this.storage.getFlashcardsByTopic(this.currentTopicId);
-                    if (flashcards.length === 0) {
-                        this.ui.showNotification('no flashcards to study. create some first!', 'warning');
-                        return;
+        const studyBtn = document.getElementById('study-flashcards-btn');
+        if (studyBtn) {
+            studyBtn.addEventListener('click', async () => {
+                if (this.currentTopicId) {
+                    try {
+                        const flashcards = await this.storage.getFlashcardsByTopic(this.currentTopicId);
+                        if (flashcards.length === 0) {
+                            this.ui.showNotification('No flashcards to study. Create some first!', 'warning');
+                            return;
+                        }
+                        // Use the global study mode manager
+                        if (window.studyModeManager) {
+                            window.studyModeManager.start(flashcards, this.currentTopicId);
+                        } else {
+                            this.ui.showNotification('Study mode is currently unavailable.', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error loading flashcards for study:', error);
+                        this.ui.showNotification('Failed to load flashcards for study', 'error');
                     }
-
-                    // initialize study mode
-                    const studyMode = new StudyMode(this.ui);
-                    studyMode.startStudy(flashcards);
-                } catch (error) {
-                    console.error('Error loading flashcards for study:', error);
-                    this.ui.showNotification('Failed to load flashcards', 'error');
                 }
-            }
-        });
+            });
+        }
 
-        // flashcards list click event delegation for edit/delete
-        document.getElementById('flashcards-list').addEventListener('click', async (e) => {
-            const flashcardItem = e.target.closest('.flashcard-item');
-            if (!flashcardItem) return;
-
-            const flashcardId = flashcardItem.dataset.id;
-
-            // check if edit button was clicked
-            if (e.target.closest('.edit-flashcard-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Prevent rapid clicking
-                const editBtn = e.target.closest('.edit-flashcard-btn');
-                if (editBtn.disabled) return;
-                editBtn.disabled = true;
-                
-                try {
-                    const flashcard = await this.getFlashcardById(flashcardId);
-                    if (flashcard) {
-                        // Longer delay to ensure all events are processed
-                        setTimeout(() => {
-                            this.ui.openModal('flashcard', flashcard);
-                            // Re-enable button after modal opens
-                            setTimeout(() => {
-                                editBtn.disabled = false;
-                            }, 100);
-                        }, 100);
-                    } else {
-                        editBtn.disabled = false;
-                    }
-                } catch (error) {
-                    console.error('Error loading flashcard for editing:', error);
-                    this.ui.showNotification('Failed to load flashcard data', 'error');
-                    editBtn.disabled = false;
-                }
-                return;
-            }
-
-            // check if delete button was clicked
-            if (e.target.closest('.delete-flashcard-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                this.ui.openModal('confirm', {
-                    title: 'delete flashcard',
-                    message: 'are you sure you want to delete this flashcard?',
-                    confirmText: 'delete',
-                    onConfirm: () => {
-                        this.deleteFlashcard(flashcardId);
-                        this.ui.closeAllModals();
-                    }
-                });
-                return;
-            }
-        });
+        // Note: Edit/delete actions for flashcards are now handled by the action menu system in UI manager
     }
 
     /**
@@ -134,82 +103,70 @@ class FlashcardsManager {
      */
     async getFlashcardById(flashcardId) {
         try {
-            return await this.storage.getFlashcardById(flashcardId);
+            const flashcard = await this.storage.getFlashcardById(flashcardId);
+            if (!flashcard) this.ui.showNotification('Flashcard not found', 'error');
+            return flashcard;
         } catch (error) {
             console.error('Error getting flashcard by ID:', error);
+            this.ui.showNotification('Failed to fetch flashcard details', 'error');
             return null;
+        }
+    }
+
+    /**
+     * load flashcards for a topic
+     * @param {string} topicId - id of the topic
+     */
+    async loadFlashcardsForTopic(topicId) {
+        this.setCurrentTopicId(topicId);
+        try {
+            const flashcards = await this.storage.getFlashcardsByTopic(topicId);
+            this.ui.renderFlashcardsList(flashcards);
+        } catch (error) {
+            console.error(`Error loading flashcards for topic ${topicId}:`, error);
+            this.ui.showNotification('Failed to load flashcards for this topic', 'error');
+            this.ui.renderFlashcardsList([]);
         }
     }
 
     /**
      * save a flashcard (new or edit)
      */
-    async saveFlashcard() {
-        const questionInput = document.getElementById('flashcard-question');
-        const answerInput = document.getElementById('flashcard-answer');
-
+    async handleSaveFlashcard() {
+        const formElement = document.getElementById('flashcard-form');
+        const questionInput = formElement.elements['flashcard-question'];
+        const answerInput = formElement.elements['flashcard-answer'];
         const question = questionInput.value.trim();
         const answer = answerInput.value.trim();
+        const editingFlashcardId = formElement.dataset.editingId;
 
-        if (!question) {
-            this.ui.showNotification('question is required', 'error');
+        if (!question || !answer) {
+            this.ui.showNotification('Both question and answer are required', 'error');
+            return;
+        }
+        if (!this.currentTopicId) {
+            this.ui.showNotification('No active topic selected to save flashcard to.', 'error');
             return;
         }
 
-        if (!answer) {
-            this.ui.showNotification('answer is required', 'error');
-            return;
+        const flashcardData = { question, answer, topicId: this.currentTopicId };
+        if (editingFlashcardId) {
+            flashcardData.id = editingFlashcardId;
         }
 
         try {
-            const modalTitle = document.getElementById('flashcard-modal-title').textContent.toLowerCase();
-            const isEditing = modalTitle.startsWith('edit');
-            const editingFlashcardId = questionInput.getAttribute('data-flashcard-id');
-            
-            console.log('Save flashcard - modalTitle:', modalTitle, 'isEditing:', isEditing, 'editingFlashcardId:', editingFlashcardId);
-            
-            if (isEditing && editingFlashcardId) {
-                // Edit existing flashcard
-                const existingFlashcard = await this.getFlashcardById(editingFlashcardId);
-                if (existingFlashcard) {
-                    console.log('Editing flashcard with ID:', existingFlashcard.id, existingFlashcard);
-                    existingFlashcard.question = question;
-                    existingFlashcard.answer = answer;
-                    existingFlashcard.updatedAt = new Date();
-                    await this.storage.saveFlashcard(existingFlashcard);
-                    this.ui.showNotification('flashcard updated successfully', 'success');
-                }
-            } else {
-                // create new flashcard
-                console.log('Creating new flashcard');
-                
-                // Get current topic ID - fallback to topicsManager if not set
-                let topicId = this.currentTopicId;
-                if (!topicId && this.topicsManager) {
-                    topicId = this.topicsManager.currentTopicId;
-                    this.currentTopicId = topicId; // Update our local reference
-                }
-                
-                if (!topicId) {
-                    this.ui.showNotification('No topic selected. Please select a topic first.', 'error');
-                    return;
-                }
-                
-                const newFlashcard = new Flashcard(question, answer, topicId);
-                await this.storage.saveFlashcard(newFlashcard);
-                this.ui.showNotification('flashcard created successfully', 'success');
-            }
-
-            // close the modal and refresh flashcards
+            await this.storage.saveFlashcard(flashcardData);
             this.ui.closeAllModals();
+            this.ui.showNotification(editingFlashcardId ? 'Flashcard updated' : 'Flashcard created', 'success');
 
-            // reload flashcards using the topics manager
-            if (this.topicsManager) {
-                await this.topicsManager.selectTopic(this.currentTopicId);
+            await this.loadFlashcardsForTopic(this.currentTopicId);
+            
+            if (this.authManager) {
+                await this.authManager.refreshStats();
             }
         } catch (error) {
             console.error('Error saving flashcard:', error);
-            this.ui.showNotification('Failed to save flashcard', 'error');
+            this.ui.showNotification('Failed to save flashcard. ' + (error.message || ''), 'error');
         }
     }
 
@@ -218,32 +175,20 @@ class FlashcardsManager {
      * @param {string} flashcardId - id of the flashcard to delete
      */
     async deleteFlashcard(flashcardId) {
+        if (!flashcardId || !this.currentTopicId) return;
+
         try {
-            const success = await this.storage.deleteFlashcard(flashcardId);
+            await this.storage.deleteFlashcard(flashcardId);
+            this.ui.showNotification('Flashcard deleted successfully', 'success');
 
-            if (success) {
-                this.ui.showNotification('flashcard deleted successfully', 'success');
-
-                // reload flashcards
-                const flashcards = await this.storage.getFlashcardsByTopic(this.currentTopicId);
-                this.ui.renderFlashcardsList(flashcards);
-
-                // update topic's flashcard count
-                this.ui.updateTopicFlashcardsCount(this.currentTopicId, flashcards.length);
-
-                // If we have topics manager reference, refresh the course view too
-                if (this.topicsManager) {
-                    const topic = await this.topicsManager.getTopicById(this.currentTopicId);
-                    if (topic && this.topicsManager.coursesManager) {
-                        await this.topicsManager.coursesManager.selectCourse(topic.courseId);
-                    }
-                }
-            } else {
-                this.ui.showNotification('failed to delete flashcard', 'error');
+            await this.loadFlashcardsForTopic(this.currentTopicId);
+            
+            if (this.authManager) {
+                await this.authManager.refreshStats();
             }
         } catch (error) {
             console.error('Error deleting flashcard:', error);
-            this.ui.showNotification('failed to delete flashcard', 'error');
+            this.ui.showNotification('Failed to delete flashcard. ' + (error.message || ''), 'error');
         }
     }
 
@@ -271,3 +216,23 @@ class FlashcardsManager {
         }
     }
 }
+
+// Initialize FlashcardsManager and inject dependencies
+document.addEventListener('DOMContentLoaded', () => {
+    const checkReadyInterval = setInterval(() => {
+        if (window.storageManager && window.uiManager && window.authManager && window.topicsManager) { // All core managers ready
+            clearInterval(checkReadyInterval);
+
+            window.flashcardsManager = new FlashcardsManager(window.storageManager, window.uiManager);
+            window.flashcardsManager.setTopicsManager(window.topicsManager);
+            window.flashcardsManager.setAuthManager(window.authManager);
+
+            // If topicsManager needs flashcardsManager (it does, for loading flashcards within a topic)
+            if (typeof window.topicsManager.setFlashcardsManager === 'function') {
+                window.topicsManager.setFlashcardsManager(window.flashcardsManager);
+            }
+            
+            // Flashcards are loaded when a topic is viewed, no initial global load needed here.
+        }
+    }, 100);
+});

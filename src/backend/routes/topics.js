@@ -6,7 +6,7 @@ const { requireAuth } = require('../middleware/auth');
 // Apply authentication middleware to all routes
 router.use(requireAuth);
 
-// GET /api/topics - Get all topics or topics by course
+// GET /api/topics - Get all topics or topics by course (enhanced with course title)
 router.get('/', async (req, res) => {
     try {
         const { courseId } = req.query;
@@ -18,8 +18,8 @@ router.get('/', async (req, res) => {
             // Get topics for a specific course
             topics = await Topic.findByCourseId(courseId, userId);
         } else {
-            // Get all topics for the user
-            topics = await Topic.findByUserId(userId);
+            // Get all topics for the user with course title information
+            topics = await Topic.findByUserIdWithCourseTitle(userId);
         }
         
         res.json({
@@ -63,10 +63,44 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/topics - Create a new topic
+// GET /api/topics/:id/flashcards-count - Get flashcard count for a specific topic
+router.get('/:id/flashcards-count', async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const topicId = req.params.id;
+        
+        // First verify the topic belongs to the user
+        const topic = await Topic.findByIdAndUserId(topicId, userId);
+        if (!topic) {
+            return res.status(404).json({
+                success: false,
+                message: 'Topic not found'
+            });
+        }
+        
+        // Get the flashcard count
+        const stats = await topic.getStats();
+        
+        res.json({
+            success: true,
+            data: {
+                count: stats.flashcard_count
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching flashcard count:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch flashcard count',
+            error: error.message
+        });
+    }
+});
+
+// POST /api/topics - Create a new topic (support both courseId and course_id parameters)
 router.post('/', async (req, res) => {
     try {
-        const { course_id, title, description } = req.body;
+        const { courseId, course_id, title, description } = req.body;
         const userId = req.session.userId;
         
         if (!title) {
@@ -76,9 +110,12 @@ router.post('/', async (req, res) => {
             });
         }
 
+        // Support both courseId (frontend) and course_id (backend) parameter names
+        const finalCourseId = courseId || course_id || null;
+
         const topicData = {
             user_id: userId,
-            course_id: course_id || null, // Allow null for standalone topics
+            course_id: finalCourseId,
             title,
             description: description || ''
         };
@@ -100,10 +137,10 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/topics/:id - Update a topic
+// PUT /api/topics/:id - Update a topic (support both courseId and course_id parameters)
 router.put('/:id', async (req, res) => {
     try {
-        const { title, description, course_id } = req.body;
+        const { title, description, courseId, course_id } = req.body;
         const userId = req.session.userId;
         
         if (!title) {
@@ -121,10 +158,13 @@ router.put('/:id', async (req, res) => {
             });
         }
 
+        // Support both courseId (frontend) and course_id (backend) parameter names
+        const finalCourseId = courseId !== undefined ? courseId : (course_id !== undefined ? course_id : null);
+
         const updatedTopic = await topic.update({
             title,
             description: description || '',
-            course_id: course_id || null
+            course_id: finalCourseId
         });
         
         res.json({

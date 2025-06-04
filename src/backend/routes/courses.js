@@ -10,11 +10,11 @@ router.use(requireAuth);
 router.get('/', async (req, res) => {
     try {
         const userId = req.session.userId;
-        const courses = await Course.findByUserId(userId);
+        const courses = await Course.findByUserIdWithTopicCount(userId);
         
         res.json({
             success: true,
-            data: courses.map(course => course.toJSON())
+            data: courses
         });
     } catch (error) {
         console.error('Error fetching courses:', error);
@@ -48,6 +48,33 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch course',
+            error: error.message
+        });
+    }
+});
+
+// GET /api/courses/:id/details - Get course details with topics
+router.get('/:id/details', async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const courseDetails = await Course.findByIdWithTopics(req.params.id, userId);
+        
+        if (!courseDetails) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: courseDetails
+        });
+    } catch (error) {
+        console.error('Error fetching course details:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch course details',
             error: error.message
         });
     }

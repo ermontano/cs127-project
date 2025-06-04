@@ -4,10 +4,15 @@ class TopicsManager {
     constructor(storage, ui) {
         this.storage = storage;
         this.ui = ui;
-        this.currentTopicId = null;
-        this.currentCourseId = null;
+        this.currentTopicId = null; // ID of the topic currently being viewed in detail or edited
+        this.currentCourseIdForContext = null; // Course ID context, e.g., when viewing a topic within a course
+        this.allTopicsCache = []; // Cache for all topics shown in overview
+
+        // Dependencies, to be injected
         this.coursesManager = null;
         this.flashcardsManager = null;
+        this.authManager = null; // For refreshing stats
+
         this.initEventListeners();
     }
 
@@ -21,61 +26,65 @@ class TopicsManager {
         this.flashcardsManager = flashcardsManager;
     }
 
+    // inject auth manager reference
+    setAuthManager(authManager) {
+        this.authManager = authManager;
+    }
+
     // set up UI event listeners
     initEventListeners() {
-        // Save topic button
-        document.getElementById('save-topic-btn')?.addEventListener('click', () => this.saveTopic());
+        // Topic form submission
+        const topicForm = document.getElementById('topic-form');
+        if (topicForm) {
+            topicForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleSaveTopic();
+            });
+        }
 
-        // Delete topic button
-        document.getElementById('delete-topic-btn')?.addEventListener('click', () => {
-            if (this.currentTopicId) {
-                const confirmDelete = confirm('Are you sure you want to delete this topic? All flashcards in this topic will also be deleted.');
-                if (confirmDelete) {
-                    this.deleteTopic(this.currentTopicId);
+        // Delete Topic button on the Topic View page (for the currently detailed topic)
+        // Note: Delete buttons on topic cards in grids are handled by ui.js directly.
+        const deleteTopicBtnOnView = document.querySelector('#topic-view #delete-topic-action');
+        if (deleteTopicBtnOnView) {
+            deleteTopicBtnOnView.addEventListener('click', () => {
+                if (this.currentTopicId) {
+                    const topicToDelete = this.allTopicsCache.find(t => t.id === this.currentTopicId) || { title: 'this topic' }; // Fallback title
+                    this.ui.showConfirmModal(
+                        'Delete Topic',
+                        `Are you sure you want to delete "${topicToDelete.title}" and all its flashcards?`,
+                        () => this.deleteTopic(this.currentTopicId, this.currentCourseIdForContext) // Pass context for UI refresh
+                    );
                 }
-            }
-        });
-
-        // Add topic button
-        document.getElementById('add-topic-btn')?.addEventListener('click', () => {
-            if (!this.currentCourseId) {
-                this.ui.showNotification('Please select a course first', 'error');
-                return;
-            }
-            this.showTopicModal();
-        });
-
-        // Topic grid click handlers
-        document.getElementById('topics-grid')?.addEventListener('click', (e) => {
-            const topicCard = e.target.closest('.topic-card');
-            if (!topicCard) return;
-
-            const topicId = topicCard.dataset.id;
-            if (!topicId) return;
-
-            // If edit button was clicked
-            if (e.target.classList.contains('edit-topic-btn')) {
-                this.showTopicModal(topicId);
-                return;
-            }
-
-            // Otherwise, select the topic
-            this.selectTopic(topicId);
-        });
-
-        // Course assignment form submit
-        document.getElementById('course-assignment-form')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const courseSelect = document.getElementById('course-select');
-            if (courseSelect && this.currentTopicId) {
-                this.assignCourse(this.currentTopicId, courseSelect.value);
-            }
-        });
+            });
+        }
+        
+        // Edit Topic button on the Topic View page
+        const editTopicBtnOnView = document.querySelector('#topic-view #edit-topic-action');
+        if (editTopicBtnOnView) {
+            editTopicBtnOnView.addEventListener('click', async () => {
+                if (this.currentTopicId) {
+                    const topic = await this.getTopicById(this.currentTopicId);
+                    if (topic) {
+                        this.ui.openModal('topic', topic); // Pass full topic data for editing
+                    }
+                }
+            });
+        }
+        
+        // Study flashcards button on Topic View page
+        const studyBtnOnView = document.querySelector('#topic-view #study-flashcards-btn');
+        if(studyBtnOnView) {
+            studyBtnOnView.addEventListener('click', () => {
+                if (this.currentTopicId) {
+                    this.ui.showStudyMode(this.currentTopicId);
+                }
+            });
+        }
     }
 
     // set current course id
     setCurrentCourseId(courseId) {
-        this.currentCourseId = courseId;
+        this.currentCourseIdForContext = courseId;
     }
 
     // get a topic by id
@@ -83,7 +92,8 @@ class TopicsManager {
         try {
             return await this.storage.getTopicById(topicId);
         } catch (error) {
-            console.error('Error fetching topic:', error);
+            console.error('Error fetching topic by ID:', error);
+            this.ui.showNotification('Failed to fetch topic details', 'error');
             return null;
         }
     }
@@ -100,7 +110,7 @@ class TopicsManager {
             this.currentTopicId = topic.id;
             
             if (this.coursesManager && topic.courseId) {
-                this.currentCourseId = topic.courseId;
+                this.currentCourseIdForContext = topic.courseId;
             }
             
             // Notify flashcards manager about the selected topic
@@ -122,11 +132,6 @@ class TopicsManager {
 
     // Show topic creation/edit modal
     showTopicModal(topicId = null) {
-        if (!this.currentCourseId && !topicId) {
-            this.ui.showNotification('Please select a course first', 'error');
-            return;
-        }
-
         if (topicId) {
             // For editing, load the topic data first
             this.currentTopicId = topicId;
@@ -138,7 +143,7 @@ class TopicsManager {
                 }
             });
         } else {
-            // For creating a new topic
+            // For creating a new topic - allow standalone topics
             this.currentTopicId = null;
             this.ui.openModal('topic');
         }
@@ -157,57 +162,56 @@ class TopicsManager {
     }
 
     // Save topic
-    async saveTopic() {
-        const title = document.getElementById('topic-name').value.trim();
-        const description = document.getElementById('topic-desc').value.trim();
+    async handleSaveTopic() {
+        const formElement = document.getElementById('topic-form');
+        const title = formElement.elements['topic-name'].value.trim();
+        const description = formElement.elements['topic-desc'].value.trim();
+        const editingId = formElement.dataset.editingId;
+        // courseId might be an empty string from dataset, convert to null if so for backend consistency
+        let courseId = formElement.dataset.courseId || null; 
+        if (courseId === '') courseId = null;
 
         if (!title) {
             this.ui.showNotification('Topic title is required', 'error');
             return;
         }
 
-        if (!this.currentCourseId && !this.currentTopicId) {
-            this.ui.showNotification('Please select a course first', 'error');
-            return;
-        }
-
         try {
-            const modalTitle = document.getElementById('topic-modal-title').textContent.toLowerCase();
-            const isEditing = this.currentTopicId && modalTitle.startsWith('edit');
-
-            if (isEditing) {
-                const topic = await this.getTopicById(this.currentTopicId);
-                if (topic) {
-                    topic.title = title;
-                    topic.description = description;
-                    await this.storage.saveTopic(topic);
-                    this.ui.showNotification('Topic updated successfully', 'success');
-                    
-                    if (topic.courseId && this.coursesManager) {
-                        await this.coursesManager.selectCourse(topic.courseId);
-                    }
-                }
-            } else {
-                const newTopic = {
-                    courseId: this.currentCourseId,
-                    title: title,
-                    description: description
-                };
-                const savedTopic = await this.storage.saveTopic(newTopic);
-                this.ui.showNotification('Topic created successfully', 'success');
-                this.currentTopicId = savedTopic.id;
-
-                // Refresh the course view
-                if (this.coursesManager) {
-                    await this.coursesManager.selectCourse(this.currentCourseId);
-                }
+            const topicData = { title, description };
+            if (editingId) {
+                topicData.id = editingId;
+            }
+            // Only include courseId if it's explicitly set (not null)
+            // This allows creating standalone topics or associating with a course.
+            if (courseId) { 
+                topicData.courseId = courseId;
             }
 
-            // Close the modal using UIManager
+            const savedTopic = await this.storage.saveTopic(topicData); // API: POST or PUT
             this.ui.closeAllModals();
+            this.ui.showNotification(editingId ? 'Topic updated successfully' : 'Topic created successfully', 'success');
+            
+            if (this.authManager) {
+                await this.authManager.refreshStats(); // Update stats in user menu and potentially UI
+            }
+
+            // Refresh the relevant view
+            if (courseId && this.coursesManager && document.getElementById('course-view') && !document.getElementById('course-view').classList.contains('hidden')) {
+                // If we were in a specific course view and the topic belongs to that course
+                // this.coursesManager.loadCourseDetailsAndTopics(courseId); // Refresh topics in current course view
+                this.loadTopicsForCourse(courseId); // More direct
+            } else {
+                // Default to refreshing and showing the main topics overview
+                this.loadAllTopics(); 
+                this.ui.showTopicsOverview(); 
+            }
+            
+            // If a new topic was created and we are on topics overview, it will be re-rendered by loadAllTopics.
+            // If editing an existing topic, loadAllTopics will also refresh its card.
+
         } catch (error) {
             console.error('Error saving topic:', error);
-            this.ui.showNotification('Failed to save topic', 'error');
+            this.ui.showNotification('Failed to save topic. ' + (error.message || ''), 'error');
         }
     }
 
@@ -271,28 +275,40 @@ class TopicsManager {
     }
 
     // delete a topic and refresh the course view
-    async deleteTopic(topicId) {
+    async deleteTopic(topicId, contextCourseId = null) {
+        if (!topicId) return;
+
         try {
-            const topic = await this.getTopicById(topicId);
-            if (!topic) return;
+            await this.storage.deleteTopic(topicId);
+            this.ui.showNotification('Topic deleted successfully', 'success');
+            this.currentTopicId = null; // Clear current topic context
+            this.currentCourseIdForContext = null;
 
-            const courseId = topic.courseId;
-            const success = await this.storage.deleteTopic(topicId);
+            if (this.authManager) {
+                await this.authManager.refreshStats();
+            }
 
-            if (success) {
-                this.ui.showNotification('Topic deleted successfully', 'success');
-                if (this.currentTopicId === topicId) {
-                    this.currentTopicId = null;
-                }
-                if (this.coursesManager) {
-                    await this.coursesManager.selectCourse(courseId);
+            // Determine which view to refresh and show
+            const courseViewElement = document.getElementById('course-view');
+            const onCourseView = courseViewElement && !courseViewElement.classList.contains('hidden');
+
+            if (onCourseView && contextCourseId && this.coursesManager) {
+                // If on a specific course view AND the deleted topic was associated with this context course
+                // this.coursesManager.loadCourseDetailsAndTopics(contextCourseId); // This will re-render topics for the course
+                this.loadTopicsForCourse(contextCourseId); // More direct call
+                // Check if current view is still valid (e.g. after deleting current topic on its page)
+                if (document.getElementById('topic-view') && !document.getElementById('topic-view').classList.contains('hidden')) {
+                    this.ui.showCourseView(contextCourseId);
                 }
             } else {
-                this.ui.showNotification('Failed to delete topic', 'error');
+                // If not on a specific course view, or topic was standalone, or other cases
+                // Then refresh the main topics overview and show it.
+                await this.loadAllTopics();
+                this.ui.showTopicsOverview();
             }
         } catch (error) {
             console.error('Error deleting topic:', error);
-            this.ui.showNotification('Failed to delete topic', 'error');
+            this.ui.showNotification('Failed to delete topic. ' + (error.message || ''), 'error');
         }
     }
 
@@ -302,7 +318,7 @@ class TopicsManager {
 
         try {
             term = term.toLowerCase();
-            const topics = await this.storage.getTopics();
+            const topics = await this.storage.getAllTopics();
             return topics.filter(topic =>
                 topic.title.toLowerCase().includes(term) ||
                 (topic.description && topic.description.toLowerCase().includes(term))
@@ -312,4 +328,100 @@ class TopicsManager {
             return [];
         }
     }
+
+    async loadAllTopics() {
+        try {
+            console.log('Loading all topics...');
+            const topics = await this.storage.getAllTopics(); // Assumes API returns all topics
+            console.log('Loaded topics:', topics);
+            this.allTopicsCache = topics; // Cache them
+            // The gridId 'topics-grid' is for the main topics overview page
+            this.ui.renderTopicsGrid(topics, 'topics-grid', 'overview'); 
+        } catch (error) {
+            console.error('Error loading all topics:', error);
+            this.ui.showNotification('Failed to load topics', 'error');
+            this.ui.renderTopicsGrid([], 'topics-grid', 'overview'); // Show empty state
+        }
+    }
+
+    async loadTopicsForCourse(courseId) {
+        try {
+            const topics = await this.storage.getTopicsByCourse(courseId); // API: GET /api/courses/:courseId/topics or /api/topics?courseId=...
+            // The gridId 'course-topics-grid' is for the topics grid within a specific course view
+            this.ui.renderTopicsGrid(topics, 'course-topics-grid', 'course');
+        } catch (error) {
+            console.error(`Error loading topics for course ${courseId}:`, error);
+            this.ui.showNotification('Failed to load topics for this course', 'error');
+            this.ui.renderTopicsGrid([], 'course-topics-grid', 'course'); // Show empty state
+        }
+    }
+
+    // Called by UI when rendering topic cards to get flashcard count
+    async getFlashcardCountForTopic(topicId) {
+        try {
+            return await this.storage.getFlashcardCountForTopic(topicId); // API: GET /api/topics/:topicId/flashcards/count
+        } catch (error) {
+            console.error(`Error fetching flashcard count for topic ${topicId}:`, error);
+            return 0; // Return 0 or 'N/A' on error
+        }
+    }
+
+    // Load topic details and flashcards for topic view
+    async loadTopicDetailsAndFlashcards(topicId, courseId = null) {
+        try {
+            this.currentTopicId = topicId;
+            this.currentCourseIdForContext = courseId;
+            
+            // Load topic details
+            const topic = await this.getTopicById(topicId);
+            if (!topic) {
+                this.ui.showNotification('Topic not found', 'error');
+                return;
+            }
+            
+            // Notify flashcards manager about the selected topic
+            if (this.flashcardsManager) {
+                this.flashcardsManager.setCurrentTopicId(topicId);
+                await this.flashcardsManager.loadFlashcardsForTopic(topicId);
+            }
+            
+            // Render topic details
+            this.ui.renderTopicDetails(topic);
+            
+        } catch (error) {
+            console.error('Error loading topic details and flashcards:', error);
+            this.ui.showNotification('Failed to load topic details', 'error');
+        }
+    }
 }
+
+// Initialize TopicsManager and inject dependencies
+// This needs to happen after AuthManager and UIManager are initialized.
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if core managers are ready before initializing app-specific managers
+    // A more robust system might use custom events or promises for readiness.
+    const checkReadyInterval = setInterval(() => {
+        if (window.storageManager && window.uiManager && window.authManager) {
+            clearInterval(checkReadyInterval);
+
+            window.topicsManager = new TopicsManager(window.storageManager, window.uiManager);
+            
+            // Inject dependencies if other managers are also ready
+            if (window.coursesManager) {
+                window.topicsManager.setCoursesManager(window.coursesManager);
+                // If coursesManager also depends on topicsManager, handle potential circular dependency or sequence initialization
+            }
+            if (window.flashcardsManager) {
+                window.topicsManager.setFlashcardsManager(window.flashcardsManager);
+            }
+            window.topicsManager.setAuthManager(window.authManager); // For stat refresh
+
+            // Initial load of topics if user is authenticated and UI is ready for topics overview
+            // This is now primarily handled by AuthManager.updateUI deciding the initial view.
+            // However, if that logic defaults to topicsOverview, this would be the place to call loadAllTopics.
+            // For now, AuthManager.updateUI calling uiManager.showTopicsOverview() will trigger loadAllTopics in ui.js.
+            // If ui.js's showTopicsOverview doesn't call loadAllTopics, then call it here based on initial view.
+            // Current ui.js showSection for 'topics-overview' DOES call loadAllTopics().
+        }
+    }, 100); // Check every 100ms
+});

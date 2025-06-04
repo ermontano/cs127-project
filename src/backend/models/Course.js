@@ -50,6 +50,29 @@ class Course {
     }
 
     /**
+     * Find courses by user ID with topic count
+     */
+    static async findByUserIdWithTopicCount(userId) {
+        try {
+            const result = await pool.query(`
+                SELECT c.*, COUNT(t.id) as topic_count 
+                FROM courses c
+                LEFT JOIN topics t ON c.id = t.course_id
+                WHERE c.user_id = $1 
+                GROUP BY c.id
+                ORDER BY c.updated_at DESC
+            `, [userId]);
+            
+            return result.rows.map(row => ({
+                ...new Course(row).toJSON(),
+                topicCount: parseInt(row.topic_count)
+            }));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
      * Find course by ID and user ID
      */
     static async findByIdAndUserId(id, userId) {
@@ -60,6 +83,47 @@ class Course {
             );
             
             return result.rows.length > 0 ? new Course(result.rows[0]) : null;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Find course by ID with associated topics
+     */
+    static async findByIdWithTopics(id, userId) {
+        try {
+            // First get the course
+            const courseResult = await pool.query(
+                'SELECT * FROM courses WHERE id = $1 AND user_id = $2',
+                [id, userId]
+            );
+            
+            if (courseResult.rows.length === 0) {
+                return null;
+            }
+            
+            // Then get the topics for this course
+            const topicsResult = await pool.query(
+                'SELECT * FROM topics WHERE course_id = $1 AND user_id = $2 ORDER BY updated_at DESC',
+                [id, userId]
+            );
+            
+            const course = new Course(courseResult.rows[0]);
+            const topics = topicsResult.rows.map(row => ({
+                id: row.id,
+                course_id: row.course_id,
+                user_id: row.user_id,
+                title: row.title,
+                description: row.description,
+                created_at: row.created_at,
+                updated_at: row.updated_at
+            }));
+            
+            return {
+                ...course.toJSON(),
+                topics: topics
+            };
         } catch (error) {
             throw error;
         }

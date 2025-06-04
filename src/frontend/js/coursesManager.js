@@ -11,6 +11,7 @@ class CoursesManager {
         this.ui = ui;
         this.currentCourseId = null;
         this.topicsManager = null;
+        this.authManager = null;
 
         this.initEventListeners();
     }
@@ -23,61 +24,60 @@ class CoursesManager {
         this.topicsManager = topicsManager;
     }
 
+    setAuthManager(authManager) {
+        this.authManager = authManager;
+    }
+
     initEventListeners() {
         // course form submission
-        document.getElementById('course-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveCourse();
-        });
-        
-        // add course button
-        document.getElementById('add-course-btn').addEventListener('click', () => {
-            this.ui.openModal('course');
-        });
-        
-        // welcome screen create course button
-        document.getElementById('welcome-create-course').addEventListener('click', () => {
-            this.ui.openModal('course');
-        });
+        const courseForm = document.getElementById('course-form');
+        if (courseForm) {
+            courseForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleSaveCourse();
+            });
+        }
         
         // course list click event delegation
-        document.getElementById('courses-list').addEventListener('click', (e) => {
-            const courseItem = e.target.closest('.course-item');
-            if (courseItem) {
-                const courseId = courseItem.dataset.id;
-                this.selectCourse(courseId);
-            }
-        });
+        const coursesList = document.getElementById('courses-list');
+        if (coursesList) {
+            coursesList.addEventListener('click', (e) => {
+                const courseItem = e.target.closest('.course-item');
+                if (courseItem) {
+                    const courseId = courseItem.dataset.id;
+                    this.selectCourse(courseId);
+                }
+            });
+        }
         
-        // edit course button
-        document.getElementById('edit-course-btn').addEventListener('click', async () => {
-            if (this.currentCourseId) {
-                try {
+        // Edit Course button on the Course View page
+        const editCourseBtnOnView = document.querySelector('#course-view #edit-course-action');
+        if (editCourseBtnOnView) {
+            editCourseBtnOnView.addEventListener('click', async () => {
+                if (this.currentCourseId) {
                     const course = await this.getCourseById(this.currentCourseId);
                     if (course) {
                         this.ui.openModal('course', course);
                     }
-                } catch (error) {
-                    console.error('Error loading course for editing:', error);
-                    this.ui.showNotification('Failed to load course data', 'error');
                 }
-            }
-        });
+            });
+        }
         
-        // delete course button
-        document.getElementById('delete-course-btn').addEventListener('click', () => {
-            if (this.currentCourseId) {
-                this.ui.openModal('confirm', {
-                    title: 'Delete Course',
-                    message: 'Are you sure you want to delete this course? This will also delete all topics and flashcards within it.',
-                    confirmText: 'Delete',
-                    onConfirm: () => {
-                        this.deleteCourse(this.currentCourseId);
-                        this.ui.closeAllModals();
-                    }
-                });
-            }
-        });
+        // Delete Course button on the Course View page
+        const deleteCourseBtnOnView = document.querySelector('#course-view #delete-course-action');
+        if (deleteCourseBtnOnView) {
+            deleteCourseBtnOnView.addEventListener('click', async () => {
+                if (this.currentCourseId) {
+                    const course = await this.getCourseById(this.currentCourseId);
+                    const courseTitle = course ? course.title : 'this course';
+                    this.ui.showConfirmModal(
+                        'Delete Course',
+                        `Are you sure you want to delete "${courseTitle}" and all its topics and flashcards? This action cannot be undone.`,
+                        () => this.deleteCourse(this.currentCourseId)
+                    );
+                }
+            });
+        }
     }
 
     /**
@@ -123,6 +123,7 @@ class CoursesManager {
             return await this.storage.getCourseById(courseId);
         } catch (error) {
             console.error('Error getting course by ID:', error);
+            this.ui.showNotification('Failed to fetch course details', 'error');
             return null;
         }
     }
@@ -190,61 +191,42 @@ class CoursesManager {
     /**
      * save a course (new or edit)
      */
-    async saveCourse() {
-        const titleInput = document.getElementById('course-name');
-        const descInput = document.getElementById('course-desc');
-        
-        const title = titleInput.value.trim();
-        const description = descInput.value.trim();
-        
+    async handleSaveCourse() {
+        const formElement = document.getElementById('course-form');
+        const title = formElement.elements['course-name'].value.trim();
+        const description = formElement.elements['course-desc'].value.trim();
+        const editingId = formElement.dataset.editingId;
+
         if (!title) {
             this.ui.showNotification('Course title is required', 'error');
             return;
         }
         
+        const courseData = { title, description };
+        if (editingId) {
+            courseData.id = editingId;
+        }
+        
         try {
-            const modalTitle = document.getElementById('course-modal-title').textContent.toLowerCase();
-            const isEditing = modalTitle.startsWith('edit') && this.currentCourseId;
-            
-            console.log('Save course - modalTitle:', modalTitle, 'isEditing:', isEditing, 'currentCourseId:', this.currentCourseId);
-            
-            if (isEditing) {
-                // update existing course
-                const existingCourse = await this.getCourseById(this.currentCourseId);
-                if (!existingCourse) {
-                    this.ui.showNotification('Course not found', 'error');
-                    return;
-                }
-                
-                console.log('Editing course with ID:', existingCourse.id, existingCourse);
-                
-                // Update the course object with new values
-                existingCourse.title = title;
-                existingCourse.description = description;
-                existingCourse.updatedAt = new Date();
-                
-                const updatedCourse = await this.storage.saveCourse(existingCourse);
-                this.ui.showNotification('Course updated successfully', 'success');
-                
-                // refresh the course view
-                await this.selectCourse(this.currentCourseId);
-            } else {
-                // create new course
-                console.log('Creating new course');
-                const newCourse = new Course(title, description);
-                const savedCourse = await this.storage.saveCourse(newCourse);
-                this.ui.showNotification('Course created successfully', 'success');
-                
-                // select the new course
-                this.currentCourseId = savedCourse.id;
-            }
-            
-            // close the modal and reload courses
+            const savedCourse = await this.storage.saveCourse(courseData);
             this.ui.closeAllModals();
-            await this.loadCourses();
+            this.ui.showNotification(editingId ? 'Course updated successfully' : 'Course created successfully', 'success');
+
+            if (this.authManager) {
+                await this.authManager.refreshStats();
+            }
+
+            // Refresh the course management view and navigate there, or to the edited/created course view
+            await this.loadAllCoursesForManagement();
+            
+            if (editingId) {
+                this.ui.showCourseView(savedCourse.id);
+            } else {
+                this.ui.showCourseManagementView();
+            }
         } catch (error) {
             console.error('Error saving course:', error);
-            this.ui.showNotification('Failed to save course', 'error');
+            this.ui.showNotification('Failed to save course. ' + (error.message || ''), 'error');
         }
     }
 
@@ -253,25 +235,23 @@ class CoursesManager {
      * @param {string} courseId - ID of the course to delete
      */
     async deleteCourse(courseId) {
+        if (!courseId) return;
+        
         try {
-            const success = await this.storage.deleteCourse(courseId);
-            
-            if (success) {
-                this.ui.showNotification('Course deleted successfully', 'success');
-                
-                // clear current course
-                if (this.currentCourseId === courseId) {
-                    this.currentCourseId = null;
-                }
-                
-                // reload courses
-                await this.loadCourses();
-            } else {
-                this.ui.showNotification('Failed to delete course', 'error');
+            await this.storage.deleteCourse(courseId);
+            this.ui.showNotification('Course deleted successfully', 'success');
+            this.currentCourseId = null;
+
+            if (this.authManager) {
+                await this.authManager.refreshStats();
             }
+
+            // Refresh the course management list and show that view
+            await this.loadAllCoursesForManagement();
+            this.ui.showCourseManagementView();
         } catch (error) {
             console.error('Error deleting course:', error);
-            this.ui.showNotification('Failed to delete course', 'error');
+            this.ui.showNotification('Failed to delete course. ' + (error.message || ''), 'error');
         }
     }
 
@@ -298,4 +278,56 @@ class CoursesManager {
             return [];
         }
     }
+
+    async loadAllCoursesForManagement() {
+        try {
+            const courses = await this.storage.getCourses();
+            this.ui.renderCoursesForManagement(courses);
+        } catch (error) {
+            console.error('Error loading courses for management:', error);
+            this.ui.showNotification('Failed to load courses', 'error');
+            this.ui.renderCoursesForManagement([]);
+        }
+    }
+
+    async loadCourseDetailsAndTopics(courseId) {
+        this.currentCourseId = null;
+        try {
+            const course = await this.getCourseById(courseId);
+            if (!course) {
+                this.ui.showNotification('Course not found.', 'error');
+                this.ui.showCourseManagementView();
+                return;
+            }
+
+            this.currentCourseId = course.id;
+            this.ui.renderCourseDetails(course);
+
+            if (this.topicsManager) {
+                await this.topicsManager.loadTopicsForCourse(course.id);
+            } else {
+                this.ui.renderTopicsGrid([], 'course-topics-grid', 'course');
+            }
+        } catch (error) {
+            console.error('Error loading course details and topics:', error);
+            this.ui.showNotification('Failed to load course information', 'error');
+        }
+    }
 }
+
+// Initialize CoursesManager and inject dependencies
+document.addEventListener('DOMContentLoaded', () => {
+    const checkReadyInterval = setInterval(() => {
+        if (window.storageManager && window.uiManager && window.authManager && window.topicsManager) {
+            clearInterval(checkReadyInterval);
+
+            window.coursesManager = new CoursesManager(window.storageManager, window.uiManager);
+            window.coursesManager.setTopicsManager(window.topicsManager);
+            window.coursesManager.setAuthManager(window.authManager);
+
+            if (window.topicsManager && typeof window.topicsManager.setCoursesManager === 'function') {
+                window.topicsManager.setCoursesManager(window.coursesManager);
+            }
+        }
+    }, 100);
+});

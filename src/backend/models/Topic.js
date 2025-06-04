@@ -51,6 +51,28 @@ class Topic {
     }
 
     /**
+     * Find topics by user ID with course title information
+     */
+    static async findByUserIdWithCourseTitle(userId) {
+        try {
+            const result = await pool.query(`
+                SELECT t.*, c.title as course_title 
+                FROM topics t
+                LEFT JOIN courses c ON t.course_id = c.id
+                WHERE t.user_id = $1 
+                ORDER BY t.updated_at DESC
+            `, [userId]);
+            
+            return result.rows.map(row => ({
+                ...new Topic(row).toJSON(),
+                courseTitle: row.course_title
+            }));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
      * Find topics by course ID and user ID
      */
     static async findByCourseId(courseId, userId) {

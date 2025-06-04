@@ -106,7 +106,7 @@ class StorageManager {
     }
 
     // Topic methods
-    async getTopics() {
+    async getAllTopics() {
         return await this.apiCall('/topics');
     }
 
@@ -173,7 +173,9 @@ class StorageManager {
             this.validateId(topicId, 'topic ID');
             return await this.apiCall(`/topics/${topicId}`);
         } catch (error) {
-            if (error.message.includes('404')) {
+            // If API returns 404, treat as topic not found (return null)
+            if (error.message && error.message.toLowerCase().includes('not found') || (error.status === 404)) {
+                console.warn(`Topic with ID ${topicId} not found.`);
                 return null;
             }
             throw error;
@@ -188,6 +190,20 @@ class StorageManager {
         } catch (error) {
             console.error('Failed to delete topic:', error);
             return false;
+        }
+    }
+
+    async getFlashcardCountForTopic(topicId) {
+        this.validateId(topicId, 'topic ID');
+        // Assumes backend endpoint like /api/topics/:topicId/flashcards/count
+        // that returns an object like { data: { count: X } }
+        try {
+            const response = await this.apiCall(`/topics/${topicId}/flashcards-count`); // Or flashcard-count, or similar
+            return response.count; // Assuming response is { count: X }
+        } catch (error) {
+            console.error(`Failed to get flashcard count for topic ${topicId}:`, error);
+            // Decide on a default return value or rethrow based on how frontend handles this
+            return 0; // Default to 0 if count fails
         }
     }
 

@@ -5,17 +5,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // initialize the theme
     initTheme();
     
-    // initialize all modules
-    initializeApp();
+    // The app initialization is now handled by individual managers
+    // and the main auth system in index.html
+    // initializeApp(); // DISABLED - conflicts with proper initialization
     
     // set up ui animations and interactions
     setupUIAnimations();
+    
+    // set up search functionality (will wait for global managers to be available)
+    setupSearch();
 });
 
 /**
  * initializes the application by connecting all modules
+ * DISABLED - This function conflicts with the proper initialization system
+ * Each manager now initializes itself through DOMContentLoaded listeners
  */
 async function initializeApp() {
+    // DISABLED TO PREVENT CONFLICTS
+    // The managers are now initialized by their own DOMContentLoaded listeners
+    // which prevents duplicate instances and conflicting event listeners
+    console.log('initializeApp disabled - using individual manager initialization');
+    return;
+    
+    /* ORIGINAL CODE COMMENTED OUT
     try {
         // initialize the storage manager
         const storage = window.storageManager || new StorageManager();
@@ -27,7 +40,6 @@ async function initializeApp() {
         const coursesManager = new CoursesManager(storage, ui);
         const topicsManager = new TopicsManager(storage, ui);
         const flashcardsManager = new FlashcardsManager(storage, ui);
-        const studyMode = new StudyMode(ui);
         
         // set up manager references
         coursesManager.setTopicsManager(topicsManager);
@@ -56,8 +68,7 @@ async function initializeApp() {
             ui,
             coursesManager,
             topicsManager,
-            flashcardsManager,
-            studyMode
+            flashcardsManager
         };
         
         return window.app;
@@ -66,6 +77,7 @@ async function initializeApp() {
         const ui = new UIManager();
         ui.showNotification('Failed to initialize application', 'error');
     }
+    */
 }
 
 /**
@@ -100,18 +112,26 @@ function initTheme() {
 /**
  * sets up search functionality
  */
-function setupSearch(coursesManager, topicsManager, flashcardsManager) {
+function setupSearch() {
     const searchInput = document.getElementById('search-input');
+    if (!searchInput) return;
     
     searchInput.addEventListener('input', debounce(async function() {
         const searchTerm = this.value.trim().toLowerCase();
         if (searchTerm.length >= 2) {
             try {
-                const results = {
-                    courses: await coursesManager.searchCourses(searchTerm),
-                    topics: await topicsManager.searchTopics(searchTerm),
-                    flashcards: await flashcardsManager.searchFlashcards(searchTerm)
-                };
+                // Use global managers if available
+                const results = {};
+                
+                if (window.coursesManager) {
+                    results.courses = await window.coursesManager.searchCourses(searchTerm);
+                }
+                if (window.topicsManager) {
+                    results.topics = await window.topicsManager.searchTopics(searchTerm);
+                }
+                if (window.flashcardsManager) {
+                    results.flashcards = await window.flashcardsManager.searchFlashcards(searchTerm);
+                }
                 
                 // highlight search results in the ui
                 highlightSearchResults(results, searchTerm);
@@ -245,6 +265,11 @@ function setupUIAnimations() {
     
     // add card hover effects
     document.addEventListener('mouseover', (e) => {
+        // Skip if we're in study mode to prevent conflicts
+        if (document.getElementById('study-mode') && !document.getElementById('study-mode').classList.contains('hidden')) {
+            return;
+        }
+        
         // topic card hover effect
         if (e.target.closest('.topic-card')) {
             const card = e.target.closest('.topic-card');
@@ -254,6 +279,11 @@ function setupUIAnimations() {
     }, true);
     
     document.addEventListener('mouseout', (e) => {
+        // Skip if we're in study mode to prevent conflicts
+        if (document.getElementById('study-mode') && !document.getElementById('study-mode').classList.contains('hidden')) {
+            return;
+        }
+        
         // reset topic card hover effect
         if (e.target.closest('.topic-card')) {
             const card = e.target.closest('.topic-card');
@@ -263,14 +293,22 @@ function setupUIAnimations() {
     
     // add ripple effect to buttons
     function addRippleToButton(button) {
-        // Skip ripple effect for modal-related buttons to prevent conflicts
+        // Skip ripple effect for modal-related buttons and study mode buttons to prevent conflicts
         if (button.classList.contains('edit-flashcard-btn') || 
             button.classList.contains('delete-flashcard-btn') ||
             button.classList.contains('close-button') ||
             button.classList.contains('icon-button') ||
+            button.classList.contains('action-menu-trigger') ||
+            button.classList.contains('action-menu-item') ||
             button.id.includes('modal') ||
             button.closest('.modal') ||
-            button.closest('.flashcard-actions')) {
+            button.closest('.flashcard-actions') ||
+            button.closest('.action-menu') ||
+            button.closest('.study-mode') ||  // Exclude study mode buttons
+            button.id.includes('flip-card') ||
+            button.id.includes('next-card') ||
+            button.id.includes('prev-card') ||
+            button.id.includes('exit-study')) {
             return;
         }
         

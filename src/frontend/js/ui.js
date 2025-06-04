@@ -4,6 +4,8 @@ class UIManager {
     constructor() {
         // references to main sections
         this.welcomeScreen = document.getElementById('welcome-screen');
+        this.topicsOverview = document.getElementById('topics-overview');
+        this.courseManagementView = document.getElementById('course-management-view');
         this.courseView = document.getElementById('course-view');
         this.topicView = document.getElementById('topic-view');
         this.studyMode = document.getElementById('study-mode');
@@ -16,6 +18,7 @@ class UIManager {
         
         // initialize ui event listeners
         this.initializeUIEvents();
+        this.initializeActionMenuHandler();
     }
 
     // initialize ui event listeners
@@ -72,59 +75,304 @@ class UIManager {
             }
         });
         
-        // navigation
-        document.getElementById('back-to-course-btn').addEventListener('click', () => {
-            this.showSection('course');
-        });
+        // Main Navigation
+        const navDashboardBtn = document.getElementById('nav-dashboard-btn');
+        const navManageCoursesBtn = document.getElementById('nav-manage-courses-btn');
+
+        if (navDashboardBtn) {
+            navDashboardBtn.addEventListener('click', () => {
+                this.showTopicsOverview();
+            });
+        }
+        if (navManageCoursesBtn) {
+            navManageCoursesBtn.addEventListener('click', () => {
+                this.showCourseManagementView();
+            });
+        }
         
-        document.getElementById('exit-study-btn').addEventListener('click', () => {
-            this.showSection('topic');
-        });
+        // View-specific navigation (breadcrumbs and context-sensitive back buttons)
+        const backToOverviewBtn = document.getElementById('back-to-overview-btn'); // In Topic View, for standalone topics
+        if (backToOverviewBtn) {
+            backToOverviewBtn.addEventListener('click', () => this.showTopicsOverview());
+        }
+
+        const backToCourseFromTopicBtn = document.getElementById('back-to-course-from-topic-btn'); // In Topic View, for topics within a course
+        if (backToCourseFromTopicBtn) {
+            backToCourseFromTopicBtn.addEventListener('click', () => {
+                if (window.topicsManager && window.topicsManager.currentTopic && window.topicsManager.currentTopic.courseId) {
+                    this.showCourseView(window.topicsManager.currentTopic.courseId);
+                } else {
+                    this.showCourseManagementView(); 
+                }
+            });
+        }
+
+        const backToManageCoursesBtn = document.getElementById('back-to-manage-courses-btn'); // In Course View
+        if (backToManageCoursesBtn) {
+            backToManageCoursesBtn.addEventListener('click', () => this.showCourseManagementView());
+        }
         
-        // study mode buttons
-        document.getElementById('flip-card-btn').addEventListener('click', () => {
-            const flashcard = document.getElementById('study-flashcard');
-            flashcard.classList.toggle('flipped');
+        // Welcome screen buttons
+        const welcomeCreateTopicBtn = document.getElementById('welcome-create-topic');
+        if (welcomeCreateTopicBtn) {
+            welcomeCreateTopicBtn.addEventListener('click', () => {
+                this.openModal('topic');
+            });
+        }
+
+        const welcomeCreateCourseBtn = document.getElementById('welcome-create-course');
+        if (welcomeCreateCourseBtn) {
+            welcomeCreateCourseBtn.addEventListener('click', () => {
+                this.openModal('course');
+            });
+        }
+        
+        // Topics overview buttons
+        const createTopicMainBtn = document.getElementById('create-topic-main-btn'); // In Topics Overview header
+        if (createTopicMainBtn) {
+            createTopicMainBtn.addEventListener('click', () => {
+                 this.openModal('topic');
+            });
+        }
+        
+        // Course Management buttons
+        const addCourseBtnInManagement = document.querySelector('#course-management-view #add-course-btn'); // In Course Management header
+        if (addCourseBtnInManagement) {
+            addCourseBtnInManagement.addEventListener('click', () => this.openModal('course'));
+        }
+        
+        // Add topic to course button (in course-view)
+        const addTopicToCourseBtn = document.getElementById('add-topic-to-course-btn');
+        if (addTopicToCourseBtn) {
+            addTopicToCourseBtn.addEventListener('click', () => {
+                if (window.coursesManager && window.coursesManager.currentCourseId) {
+                    this.openModal('topic', { courseId: window.coursesManager.currentCourseId });
+                } else {
+                    console.warn('Cannot add topic: current course ID not set.');
+                    this.openModal('topic');
+                }
+            });
+        }
+
+        const exitStudyBtn = document.getElementById('exit-study-btn');
+        if (exitStudyBtn) {
+            exitStudyBtn.addEventListener('click', () => {
+                // Exit study functionality is now handled by studyModeManager.exitStudy()
+                // Remove this handler to prevent conflicts and undefined topic ID errors
+                if (window.studyModeManager) {
+                    window.studyModeManager.exitStudy();
+                } else {
+                    this.showTopicsOverview();
+                }
+            });
+        }
+    }
+
+    /**
+     * Initialize global click handler for action menus
+     */
+    initializeActionMenuHandler() {
+        document.addEventListener('click', (e) => {
+            // Close all open action menus when clicking outside
+            if (!e.target.closest('.action-menu')) {
+                document.querySelectorAll('.action-menu-dropdown.show').forEach(dropdown => {
+                    dropdown.classList.remove('show');
+                });
+            }
+            
+            // Handle action menu trigger clicks
+            if (e.target.closest('.action-menu-trigger')) {
+                e.stopPropagation();
+                const trigger = e.target.closest('.action-menu-trigger');
+                const dropdown = trigger.nextElementSibling;
+                
+                // Close other open dropdowns
+                document.querySelectorAll('.action-menu-dropdown.show').forEach(otherDropdown => {
+                    if (otherDropdown !== dropdown) {
+                        otherDropdown.classList.remove('show');
+                    }
+                });
+                
+                // Toggle current dropdown
+                dropdown.classList.toggle('show');
+            }
+        });
+    }
+
+    /**
+     * Create an action menu (kebab menu) with the given actions
+     * @param {Array} actions - Array of action objects with {label, icon, class, onClick}
+     * @returns {string} HTML string for the action menu
+     */
+    createActionMenu(actions) {
+        const actionItems = actions.map(action => 
+            `<button class="action-menu-item ${action.class || ''}" data-action="${action.action}">
+                <i class="fas ${action.icon}"></i>
+                ${action.label}
+            </button>`
+        ).join('');
+        
+        return `
+            <div class="action-menu">
+                <button class="action-menu-trigger" title="More actions">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="action-menu-dropdown">
+                    ${actionItems}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Attach event listeners to action menu items
+     * @param {HTMLElement} container - Container element with action menus
+     * @param {Object} actionHandlers - Object mapping action names to handler functions
+     */
+    attachActionMenuListeners(container, actionHandlers) {
+        container.querySelectorAll('.action-menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = e.target.closest('.action-menu-item').dataset.action;
+                const handler = actionHandlers[action];
+                if (handler) {
+                    handler(e);
+                }
+                // Close the dropdown
+                e.target.closest('.action-menu-dropdown').classList.remove('show');
+            });
         });
     }
 
     // show a specific section and hide others
-    // @param {string} section - the section to show ('welcome', 'course', 'topic', or 'study')
-    showSection(section) {
+    // @param {string} section - the section to show ('welcome', 'topics-overview', 'course-management', 'course', 'topic', or 'study')
+    showSection(sectionName, data = null) {
         // hide all sections
         this.welcomeScreen.classList.add('hidden');
+        this.topicsOverview.classList.add('hidden');
+        this.courseManagementView.classList.add('hidden');
         this.courseView.classList.add('hidden');
         this.topicView.classList.add('hidden');
         this.studyMode.classList.add('hidden');
         
-        // show the requested section
-        switch (section) {
+        const navDashboardBtn = document.getElementById('nav-dashboard-btn');
+        const navManageCoursesBtn = document.getElementById('nav-manage-courses-btn');
+
+        // Reset active state for nav links
+        if (navDashboardBtn) navDashboardBtn.classList.remove('active');
+        if (navManageCoursesBtn) navManageCoursesBtn.classList.remove('active');
+        
+        // show the requested section and update nav active state
+        switch (sectionName) {
             case 'welcome':
                 this.welcomeScreen.classList.remove('hidden');
+                if (navDashboardBtn) navDashboardBtn.classList.add('active'); // Default to dashboard active
                 break;
-            case 'course':
+            case 'topics-overview':
+                this.topicsOverview.classList.remove('hidden');
+                if (window.topicsManager) window.topicsManager.loadAllTopics();
+                if (navDashboardBtn) navDashboardBtn.classList.add('active');
+                break;
+            case 'course-management':
+                this.courseManagementView.classList.remove('hidden');
+                if (window.coursesManager) window.coursesManager.loadAllCoursesForManagement();
+                if (navManageCoursesBtn) navManageCoursesBtn.classList.add('active');
+                break;
+            case 'course': // Navigating into a specific course
                 this.courseView.classList.remove('hidden');
+                // Keep 'Manage Courses' active as the parent section
+                if (navManageCoursesBtn) navManageCoursesBtn.classList.add('active'); 
                 break;
-            case 'topic':
+            case 'topic': // Navigating into a specific topic
                 this.topicView.classList.remove('hidden');
+                // Determine if topic is standalone or part of course for nav
+                if (data && data.courseId) {
+                    if (navManageCoursesBtn) navManageCoursesBtn.classList.add('active');
+                } else {
+                    if (navDashboardBtn) navDashboardBtn.classList.add('active');
+                }
                 break;
             case 'study':
                 this.studyMode.classList.remove('hidden');
+                // No specific nav change, keep context of where study mode was entered from
+                // (e.g., if entered from topic in a course, keep course nav active)
+                // This might need more sophisticated context tracking if direct nav to study mode is possible.
+                break;
+            default:
+                this.welcomeScreen.classList.remove('hidden');
+                if (navDashboardBtn) navDashboardBtn.classList.add('active');
                 break;
         }
     }
 
-    // render the courses list in the sidebar
+    // --- View-specific show methods ---
+    showWelcomeScreen() {
+        this.showSection('welcome');
+    }
+
+    showTopicsOverview() {
+        this.showSection('topics-overview');
+        const backToOverviewBtn = document.getElementById('back-to-overview-btn');
+        const backToCourseFromTopicBtn = document.getElementById('back-to-course-from-topic-btn');
+        if (backToOverviewBtn) backToOverviewBtn.classList.remove('hidden');
+        if (backToCourseFromTopicBtn) backToCourseFromTopicBtn.classList.add('hidden');
+    }
+
+    showCourseManagementView() {
+        this.showSection('course-management');
+    }
+
+    showCourseView(courseId) {
+        this.showSection('course', { courseId });
+         if (window.coursesManager) {
+            window.coursesManager.loadCourseDetailsAndTopics(courseId);
+        }
+    }
+
+    showTopicView(topicId, courseId = null) {
+        this.showSection('topic', { topicId, courseId });
+        const backToOverviewBtn = document.getElementById('back-to-overview-btn');
+        const backToCourseFromTopicBtn = document.getElementById('back-to-course-from-topic-btn');
+
+        if (courseId) {
+            if (backToOverviewBtn) backToOverviewBtn.classList.add('hidden');
+            if (backToCourseFromTopicBtn) backToCourseFromTopicBtn.classList.remove('hidden');
+        } else {
+            if (backToOverviewBtn) backToOverviewBtn.classList.remove('hidden');
+            if (backToCourseFromTopicBtn) backToCourseFromTopicBtn.classList.add('hidden');
+        }
+        if (window.topicsManager) {
+            window.topicsManager.loadTopicDetailsAndFlashcards(topicId, courseId);
+        }
+    }
+
+    showStudyMode(topicId) {
+        this.showSection('study', { topicId });
+        if (window.studyModeManager) {
+            window.studyModeManager.startStudy(topicId);
+        }
+    }
+
+    getCurrentView() {
+        if (!this.welcomeScreen.classList.contains('hidden')) return 'welcome';
+        if (!this.topicsOverview.classList.contains('hidden')) return 'topics-overview';
+        if (!this.courseManagementView.classList.contains('hidden')) return 'course-management';
+        if (!this.courseView.classList.contains('hidden')) return 'course';
+        if (!this.topicView.classList.contains('hidden')) return 'topic';
+        if (!this.studyMode.classList.contains('hidden')) return 'study';
+        return null; // Or a default view name
+    }
+
+    // render the courses list (for sidebar, now adapted for Course Management page)
     // @param {array} courses - array of course objects
-    // @param {string} activeCourseId - id of the active course
-    renderCoursesList(courses, activeCourseId = null) {
-        const coursesList = document.getElementById('courses-list');
-        coursesList.innerHTML = '';
+    renderCoursesForManagement(courses) {
+        const coursesListContainer = document.getElementById('courses-list');
+        coursesListContainer.innerHTML = '';
         
-        if (courses.length === 0) {
-            coursesList.innerHTML = `
+        if (!courses || courses.length === 0) {
+            coursesListContainer.innerHTML = `
                 <div class="empty-state">
-                    <p>no courses yet</p>
+                    <p>No courses created yet. Click "Create New Course" to start.</p>
                 </div>
             `;
             return;
@@ -132,54 +380,77 @@ class UIManager {
         
         courses.forEach(course => {
             const courseElement = document.createElement('div');
-            courseElement.className = 'course-item';
+            courseElement.className = 'course-item-card';
             courseElement.dataset.id = course.id;
             
-            if (course.id === activeCourseId) {
-                courseElement.classList.add('active');
-            }
+            const courseActions = [
+                { action: 'edit', label: 'Edit', icon: 'fa-edit', class: '' },
+                { action: 'delete', label: 'Delete', icon: 'fa-trash-alt', class: 'danger' }
+            ];
             
             courseElement.innerHTML = `
                 <div class="course-item-info">
-                    <div class="course-item-title">${course.title}</div>
-                    <div class="course-item-count">
-                        <span class="topic-count">0</span> topics
+                    <h4 class="course-item-title">${course.title}</h4>
+                    <p class="course-item-desc">${course.description || 'No description'}</p>
+                    <span class="course-item-topic-count">${course.topicCount || 0} topics</span> 
+                </div>
+                <div class="course-item-actions">
+                    <div class="course-item-primary-actions">
+                        <button class="view-course-btn primary-button" title="View Course">
+                            View Topics
+                        </button>
                     </div>
+                    ${this.createActionMenu(courseActions)}
                 </div>
             `;
             
-            coursesList.appendChild(courseElement);
+            coursesListContainer.appendChild(courseElement);
+
+            // Attach action menu listeners
+            this.attachActionMenuListeners(courseElement, {
+                edit: (e) => {
+                    this.openModal('course', course);
+                },
+                delete: (e) => {
+                    this.showConfirmModal('Delete Course', `Are you sure you want to delete "${course.title}" and all its topics and flashcards?"`, () => {
+                        if(window.coursesManager) window.coursesManager.deleteCourse(course.id);
+                    });
+                }
+            });
+
+            // Attach primary action listener
+            courseElement.querySelector('.view-course-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showCourseView(course.id);
+            });
         });
     }
 
-    // update the topics count for a course in the sidebar
-    // @param {string} courseId - id of the course
-    // @param {number} count - number of topics
-    updateCourseTopicsCount(courseId, count) {
-        const courseElement = document.querySelector(`.course-item[data-id="${courseId}"]`);
-        if (courseElement) {
-            const countElement = courseElement.querySelector('.topic-count');
-            countElement.textContent = count;
-        }
-    }
-
-    // render the course details
-    // @param {object} course - course object
     renderCourseDetails(course) {
         document.getElementById('course-title').textContent = course.title;
-        document.getElementById('course-description').textContent = course.description || 'no description';
+        document.getElementById('course-description').textContent = course.description || 'No description provided.';
     }
 
-    // render the topics grid for a course
+    // render the topics grid (generalized for main overview and within a course)
     // @param {array} topics - array of topic objects
-    renderTopicsGrid(topics) {
-        const topicsGrid = document.getElementById('topics-grid');
-        topicsGrid.innerHTML = '';
+    // @param {string} gridId - ID of the grid element to render into
+    // @param {string} context - 'overview' or 'course'
+    renderTopicsGrid(topics, gridId = 'topics-grid', context = 'overview') {
+        const topicsGridElement = document.getElementById(gridId);
+        if (!topicsGridElement) {
+            console.error(`Topics grid element with ID '${gridId}' not found.`);
+            return;
+        }
+        topicsGridElement.innerHTML = '';
         
-        if (topics.length === 0) {
-            topicsGrid.innerHTML = `
+        if (!topics || topics.length === 0) {
+            let message = "No topics yet. Click 'Add Topic' to create your first one!";
+            if (context === 'course') {
+                message = "This course has no topics yet. Click 'Add Topic to Course' to create one.";
+            }
+            topicsGridElement.innerHTML = `
                 <div class="empty-state">
-                    <p>no topics yet. create your first topic!</p>
+                    <p>${message}</p>
                 </div>
             `;
             return;
@@ -189,33 +460,87 @@ class UIManager {
             const topicElement = document.createElement('div');
             topicElement.className = 'topic-card';
             topicElement.dataset.id = topic.id;
+            if (topic.courseId) {
+                topicElement.dataset.courseId = topic.courseId;
+            }
+            
+            const topicActions = [
+                { action: 'edit', label: 'Edit', icon: 'fa-edit', class: '' },
+                { action: 'delete', label: 'Delete', icon: 'fa-trash-alt', class: 'danger' }
+            ];
             
             topicElement.innerHTML = `
+                <div class="topic-card-header">
                 <h4 class="topic-card-title">${topic.title}</h4>
-                <p class="topic-card-description">${topic.description || 'no description'}</p>
+                    ${topic.courseTitle ? `<span class="topic-card-course-chip">${topic.courseTitle}</span>` : ''}
+                </div>
+                <p class="topic-card-description">${topic.description || 'No description'}</p>
                 <div class="topic-card-meta">
-                    <span class="flashcard-count">0 flashcards</span>
-                    <span class="topic-date">${formatDate(new Date(topic.createdAt))}</span>
+                    <span class="flashcard-count">Loading...</span>
+                    <span class="topic-date">${formatDate(new Date(topic.created_at || topic.createdAt))}</span>
+                </div>
+                <div class="topic-card-actions">
+                    <div class="topic-card-primary-actions">
+                        <button class="study-topic-btn primary-button" title="Study Topic"><i class="fas fa-play"></i> Study</button>
+                    </div>
+                    ${this.createActionMenu(topicActions)}
                 </div>
             `;
             
-            topicsGrid.appendChild(topicElement);
+            topicsGridElement.appendChild(topicElement);
+
+            // Make card clickable (except for buttons)
+            topicElement.addEventListener('click', (e) => {
+                 if (e.target.closest('button') || e.target.closest('.action-menu')) return;
+                 this.showTopicView(topic.id, topic.courseId);
+            });
+
+            // Attach action menu listeners
+            this.attachActionMenuListeners(topicElement, {
+                edit: (e) => {
+                    this.openModal('topic', topic);
+                },
+                delete: (e) => {
+                    this.showConfirmModal('Delete Topic', `Are you sure you want to delete "${topic.title}" and all its flashcards?"`, () => {
+                         if(window.topicsManager) window.topicsManager.deleteTopic(topic.id, topic.courseId);
+                    });
+                }
+            });
+
+            // Attach primary action listener
+            topicElement.querySelector('.study-topic-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showStudyMode(topic.id);
+            });
+
+            if (window.topicsManager) {
+                window.topicsManager.getFlashcardCountForTopic(topic.id)
+                    .then(count => this.updateTopicFlashcardsCount(topic.id, count, gridId))
+                    .catch(err => {
+                        console.error(`Failed to get flashcard count for topic ${topic.id}:`, err);
+                        this.updateTopicFlashcardsCount(topic.id, 'N/A', gridId);
+                    });
+            } else {
+                 this.updateTopicFlashcardsCount(topic.id, 'N/A', gridId);
+            }
         });
     }
 
-    // update the flashcards count for a topic in the topics grid
+    // update the flashcards count for a topic
     // @param {string} topicId - id of the topic
-    // @param {number} count - number of flashcards
-    updateTopicFlashcardsCount(topicId, count) {
-        const topicElement = document.querySelector(`.topic-card[data-id="${topicId}"]`);
+    // @param {number | string} count - number of flashcards or 'N/A'
+    // @param {string} gridId - the ID of the parent grid to find the topic card
+    updateTopicFlashcardsCount(topicId, count, gridId = 'topics-grid') {
+        const topicElement = document.querySelector(`#${gridId} .topic-card[data-id="${topicId}"]`);
         if (topicElement) {
             const countElement = topicElement.querySelector('.flashcard-count');
-            countElement.textContent = `${count} flashcard${count !== 1 ? 's' : ''}`;
+            if (countElement) {
+                countElement.textContent = `${count} flashcard${(typeof count === 'number' && count !== 1) ? 's' : ''}`;
+            }
         }
     }
 
     // render the topic details
-    // @param {object} topic - topic object
     renderTopicDetails(topic) {
         document.getElementById('topic-title').textContent = topic.title;
         document.getElementById('topic-description').textContent = topic.description || 'no description';
@@ -241,121 +566,153 @@ class UIManager {
             flashcardElement.className = 'flashcard-item';
             flashcardElement.dataset.id = flashcard.id;
             
+            const flashcardActions = [
+                { action: 'edit', label: 'Edit', icon: 'fa-edit', class: '' },
+                { action: 'delete', label: 'Delete', icon: 'fa-trash-alt', class: 'danger' }
+            ];
+            
             flashcardElement.innerHTML = `
-                <div class="flashcard-question">${flashcard.question}</div>
-                <div class="flashcard-answer">${flashcard.answer}</div>
+                <div class="flashcard-item-content">
+                    <div class="flashcard-question">${this.escapeHTML(flashcard.question)}</div>
+                    <div class="flashcard-answer">${this.escapeHTML(flashcard.answer)}</div>
+                </div>
                 <div class="flashcard-actions">
-                    <button class="edit-flashcard-btn icon-button" title="edit flashcard">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="delete-flashcard-btn icon-button" title="delete flashcard">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                    ${this.createActionMenu(flashcardActions)}
                 </div>
             `;
             
             flashcardsList.appendChild(flashcardElement);
+
+            // Attach action menu listeners
+            this.attachActionMenuListeners(flashcardElement, {
+                edit: (e) => {
+                    this.openModal('flashcard', flashcard);
+                },
+                delete: (e) => {
+                    this.showConfirmModal('Delete Flashcard', `Are you sure you want to delete this flashcard?`, () => {
+                        if(window.flashcardsManager) window.flashcardsManager.deleteFlashcard(flashcard.id);
+                    });
+                }
+            });
         });
     }
 
-    // open a modal
-    // @param {string} type - the type of modal to open ('course', 'topic', 'flashcard', or 'confirm')
-    // @param {object} data - optional data to populate the modal with
+    // Show modal
+    // @param {string} type - 'course', 'topic', or 'flashcard'
+    // @param {object} data - existing data for editing (optional)
     openModal(type, data = null) {
-        console.log('Opening modal:', type, data ? 'with data' : 'without data');
-        
-        // Prevent opening if already opening a modal
-        if (this._openingModal) {
-            console.log('Modal already opening, ignoring request');
-            return;
-        }
-        this._openingModal = true;
-        
-        // close any open modals first
         this.closeAllModals();
         
-        let modal, titleElement, isEdit = false;
+        let modalElement;
+        let formElement;
+        let modalTitle;
         
         switch (type) {
             case 'course':
-                modal = this.courseModal;
-                titleElement = document.getElementById('course-modal-title');
+                modalElement = this.courseModal;
+                formElement = document.getElementById('course-form');
+                modalTitle = document.getElementById('course-modal-title');
                 if (data) {
-                    isEdit = true;
-                    document.getElementById('course-name').value = data.title;
-                    document.getElementById('course-desc').value = data.description || '';
+                    modalTitle.textContent = 'Edit Course';
+                    formElement.elements['course-name'].value = data.title || '';
+                    formElement.elements['course-desc'].value = data.description || '';
+                    formElement.dataset.editingId = data.id;
                 } else {
-                    document.getElementById('course-name').value = '';
-                    document.getElementById('course-desc').value = '';
+                    modalTitle.textContent = 'Add New Course';
+                    formElement.reset();
+                    delete formElement.dataset.editingId;
                 }
                 break;
             case 'topic':
-                modal = this.topicModal;
-                titleElement = document.getElementById('topic-modal-title');
-                if (data) {
-                    isEdit = true;
-                    document.getElementById('topic-name').value = data.title;
-                    document.getElementById('topic-desc').value = data.description || '';
+                modalElement = this.topicModal;
+                formElement = document.getElementById('topic-form');
+                modalTitle = document.getElementById('topic-modal-title');
+                const courseContextId = data && data.courseId ? data.courseId : (window.coursesManager ? window.coursesManager.currentCourseId : null);
+
+                if (data && data.id) {
+                    modalTitle.textContent = 'Edit Topic';
+                    formElement.elements['topic-name'].value = data.title || '';
+                    formElement.elements['topic-desc'].value = data.description || '';
+                    formElement.dataset.editingId = data.id;
+                    formElement.dataset.courseId = data.courseId || (courseContextId || '');
                 } else {
-                    document.getElementById('topic-name').value = '';
-                    document.getElementById('topic-desc').value = '';
+                    modalTitle.textContent = 'Add New Topic';
+                    formElement.reset();
+                    delete formElement.dataset.editingId;
+                    formElement.dataset.courseId = courseContextId || ''; 
                 }
                 break;
             case 'flashcard':
-                modal = this.flashcardModal;
-                titleElement = document.getElementById('flashcard-modal-title');
+                modalElement = this.flashcardModal;
+                modalTitle = document.getElementById('flashcard-modal-title');
                 if (data) {
-                    isEdit = true;
+                    modalTitle.textContent = 'Edit Flashcard';
                     const questionInput = document.getElementById('flashcard-question');
                     const answerInput = document.getElementById('flashcard-answer');
                     questionInput.value = data.question;
                     answerInput.value = data.answer;
-                    // Store the flashcard ID for editing
                     questionInput.setAttribute('data-flashcard-id', data.id);
-                    console.log('Editing flashcard with ID:', data.id);
                 } else {
+                    modalTitle.textContent = 'Add New Flashcard';
                     document.getElementById('flashcard-question').value = '';
                     document.getElementById('flashcard-answer').value = '';
-                    // Clear any existing flashcard ID
                     document.getElementById('flashcard-question').removeAttribute('data-flashcard-id');
                 }
                 break;
-            case 'confirm':
-                modal = this.confirmModal;
-                titleElement = document.getElementById('confirm-title');
-                if (data) {
-                    document.getElementById('confirm-title').textContent = data.title || 'confirm action';
-                    document.getElementById('confirm-message').textContent = data.message || 'are you sure you want to proceed?';
-                    const confirmButton = document.getElementById('confirm-action-btn');
-                    confirmButton.textContent = data.confirmText || 'confirm';
-                    confirmButton.onclick = data.onConfirm || (() => this.closeAllModals());
-                }
-                break;
         }
 
-        if (titleElement) {
-            titleElement.textContent = isEdit ? `edit ${type}` : `add new ${type}`;
-        }
-
-        if (modal) {
-            modal.classList.add('show');
+        if (modalElement) {
+            modalElement.classList.add('show');
             setTimeout(() => { 
-                modal.style.opacity = '1'; 
-                this._openingModal = false; // Allow new modals after this one is fully open
+                modalElement.style.opacity = '1'; 
             }, 10);
-            const firstInput = modal.querySelector('input, textarea');
+            const firstInput = modalElement.querySelector('input, textarea');
             if (firstInput) {
                 setTimeout(() => { 
                     firstInput.focus();
-                    // Prevent text selection from immediately closing modal
                     firstInput.addEventListener('mousedown', (e) => {
                         e.stopPropagation();
                     }, { once: true });
                 }, 350);
             }
-            console.log('Modal opened successfully:', type);
-        } else {
-            this._openingModal = false;
+        }
+    }
+
+    // Show confirmation modal
+    showConfirmModal(title, message, onConfirm, onCancel = null) {
+        this.closeAllModals();
+        
+        const titleElement = document.getElementById('confirm-title');
+        const messageElement = document.getElementById('confirm-message');
+        const confirmBtn = document.getElementById('confirm-action-btn');
+        const cancelBtn = document.getElementById('cancel-confirm-btn');
+        
+        if (titleElement) titleElement.textContent = title;
+        if (messageElement) messageElement.textContent = message;
+        
+        // Remove existing listeners
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        
+        // Add new listeners
+        newConfirmBtn.addEventListener('click', () => {
+            this.closeAllModals();
+            if (onConfirm) onConfirm();
+        });
+        
+        newCancelBtn.addEventListener('click', () => {
+            this.closeAllModals();
+            if (onCancel) onCancel();
+        });
+        
+        // Show the modal
+        if (this.confirmModal) {
+            this.confirmModal.classList.add('show');
+            setTimeout(() => { 
+                this.confirmModal.style.opacity = '1'; 
+            }, 10);
         }
     }
 
@@ -410,6 +767,81 @@ class UIManager {
             }
         }
     }
+
+    // Utility to escape HTML to prevent XSS when rendering user content
+    escapeHTML(str) {
+        if (typeof str !== 'string') return '';
+        return str.replace(/[&<>"']/g, function (match) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[match];
+        });
+    }
+
+    // Render courses list (for course management or course selection)
+    renderCoursesList(courses, selectedCourseId = null) {
+        const container = document.getElementById('courses-list');
+        if (!container) {
+            console.warn('Courses list container not found');
+            return;
+        }
+
+        container.innerHTML = '';
+
+        if (!courses || courses.length === 0) {
+            container.innerHTML = '<p class="empty-state">No courses found. Create your first course!</p>';
+            return;
+        }
+
+        courses.forEach(course => {
+            const courseElement = document.createElement('div');
+            courseElement.className = `course-item ${selectedCourseId === course.id ? 'selected' : ''}`;
+            courseElement.innerHTML = `
+                <div class="course-header">
+                    <h3>${this.escapeHTML(course.title)}</h3>
+                    <div class="course-actions">
+                        <button class="edit-course-btn icon-button" title="Edit course" data-course-id="${course.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="delete-course-btn icon-button" title="Delete course" data-course-id="${course.id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="course-description">${this.escapeHTML(course.description || 'No description')}</p>
+                <div class="course-stats">
+                    <span class="topic-count">${course.topicCount || 0} topics</span>
+                    <span class="created-date">Created ${formatDate(new Date(course.created_at))}</span>
+                </div>
+            `;
+
+            // Add click handler to view course details
+            courseElement.addEventListener('click', (e) => {
+                if (!e.target.closest('.course-actions')) {
+                    if (window.coursesManager) {
+                        window.coursesManager.selectCourse(course.id);
+                    }
+                }
+            });
+
+            container.appendChild(courseElement);
+        });
+    }
+
+    // Update course topics count in the UI
+    updateCourseTopicsCount(courseId, count) {
+        const courseElement = document.querySelector(`[data-course-id="${courseId}"]`);
+        if (courseElement) {
+            const topicCountElement = courseElement.querySelector('.topic-count');
+            if (topicCountElement) {
+                topicCountElement.textContent = `${count} topics`;
+            }
+        }
+    }
 }
 
 // format a date to a human-readable string
@@ -430,3 +862,18 @@ function formatDate(date) {
 const styleElement = document.createElement('style');
 styleElement.textContent = `/* unchanged css styles */`;
 document.head.appendChild(styleElement);
+
+// Initialize UI manager when DOM is loaded
+// This is now primarily handled by AuthManager after successful authentication.
+// Keeping a simplified version or removing if AuthManager fully controls UIManager instantiation.
+document.addEventListener('DOMContentLoaded', () => {
+    // UIManager is now initialized by AuthManager or the main script in index.html
+    // after authentication is confirmed. This listener might be redundant or 
+    // could serve as a fallback if UIManager is needed for non-authed states (not current use case for index.html)
+    // For now, let's ensure it doesn't conflict.
+    // if (!window.uiManager && !window.authCheckInProgress && !window.authManager) {
+        // If no auth process is happening and authManager isn't there, 
+        // it implies a state where UIManager might not be needed or is managed elsewhere.
+        // console.log("UIManager DOMContentLoaded: No active auth process, UIManager not initialized by this listener.");
+    // }
+});
