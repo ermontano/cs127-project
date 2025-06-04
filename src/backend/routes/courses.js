@@ -1,14 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
+const { requireAuth } = require('../middleware/auth');
+
+// Apply authentication middleware to all routes
+router.use(requireAuth);
 
 // GET /api/courses - Get all courses for the authenticated user
 router.get('/', async (req, res) => {
     try {
-        const courses = await Course.findAll(req.session.userId);
+        const userId = req.session.userId;
+        const courses = await Course.findByUserId(userId);
+        
         res.json({
             success: true,
-            data: courses
+            data: courses.map(course => course.toJSON())
         });
     } catch (error) {
         console.error('Error fetching courses:', error);
@@ -23,27 +29,19 @@ router.get('/', async (req, res) => {
 // GET /api/courses/:id - Get a specific course
 router.get('/:id', async (req, res) => {
     try {
-        const id = req.params.id;
+        const userId = req.session.userId;
+        const course = await Course.findByIdAndUserId(req.params.id, userId);
         
-        // Validate ID
-        const numericId = parseInt(id);
-        if (isNaN(numericId) || numericId <= 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid course ID provided'
-            });
-        }
-        
-        const course = await Course.findById(numericId, req.session.userId);
         if (!course) {
             return res.status(404).json({
                 success: false,
                 message: 'Course not found'
             });
         }
+        
         res.json({
             success: true,
-            data: course
+            data: course.toJSON()
         });
     } catch (error) {
         console.error('Error fetching course:', error);
@@ -58,34 +56,31 @@ router.get('/:id', async (req, res) => {
 // POST /api/courses - Create a new course
 router.post('/', async (req, res) => {
     try {
-        console.log('📝 Creating course with body:', req.body);
         const { title, description } = req.body;
-        
-        console.log('📝 Extracted title:', title);
-        console.log('📝 Extracted description:', description);
+        const userId = req.session.userId;
         
         if (!title) {
-            console.log('❌ No title provided');
             return res.status(400).json({
                 success: false,
                 message: 'Course title is required'
             });
         }
 
-        console.log('📝 Creating Course instance...');
-        const course = new Course(title, description, req.session.userId);
-        console.log('📝 Course instance created, calling save...');
-        const savedCourse = await course.save();
-        console.log('✅ Course saved successfully:', savedCourse);
+        const courseData = {
+            user_id: userId,
+            title,
+            description: description || ''
+        };
+
+        const course = await Course.create(courseData);
         
         res.status(201).json({
             success: true,
-            data: savedCourse,
+            data: course.toJSON(),
             message: 'Course created successfully'
         });
     } catch (error) {
-        console.error('❌ Error creating course:', error);
-        console.error('❌ Error stack:', error.stack);
+        console.error('Error creating course:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to create course',
@@ -98,16 +93,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { title, description } = req.body;
-        const id = req.params.id;
-        
-        // Validate ID
-        const numericId = parseInt(id);
-        if (isNaN(numericId) || numericId <= 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid course ID provided'
-            });
-        }
+        const userId = req.session.userId;
         
         if (!title) {
             return res.status(400).json({
@@ -116,24 +102,22 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        const existingCourse = await Course.findById(numericId, req.session.userId);
-        if (!existingCourse) {
+        const course = await Course.findByIdAndUserId(req.params.id, userId);
+        if (!course) {
             return res.status(404).json({
                 success: false,
                 message: 'Course not found'
             });
         }
 
-        // Create a course instance and update it
-        const course = Object.assign(new Course(), existingCourse);
-        course.title = title;
-        course.description = description;
-        
-        const updatedCourse = await course.update();
+        const updatedCourse = await course.update({
+            title,
+            description: description || ''
+        });
         
         res.json({
             success: true,
-            data: updatedCourse,
+            data: updatedCourse.toJSON(),
             message: 'Course updated successfully'
         });
     } catch (error) {
@@ -149,31 +133,29 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/courses/:id - Delete a course
 router.delete('/:id', async (req, res) => {
     try {
-        const id = req.params.id;
+        const userId = req.session.userId;
+        const course = await Course.findByIdAndUserId(req.params.id, userId);
         
-        // Validate ID
-        const numericId = parseInt(id);
-        if (isNaN(numericId) || numericId <= 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid course ID provided'
-            });
-        }
-        
-        const deletedCourse = await Course.delete(numericId, req.session.userId);
-        
-        if (!deletedCourse) {
+        if (!course) {
             return res.status(404).json({
                 success: false,
                 message: 'Course not found'
             });
         }
 
-        res.json({
-            success: true,
-            data: deletedCourse,
-            message: 'Course deleted successfully'
-        });
+        const deleted = await course.delete();
+        
+        if (deleted) {
+            res.json({
+                success: true,
+                message: 'Course deleted successfully'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to delete course'
+            });
+        }
     } catch (error) {
         console.error('Error deleting course:', error);
         res.status(500).json({

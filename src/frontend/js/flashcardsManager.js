@@ -195,7 +195,7 @@ class FlashcardsManager {
                     return;
                 }
                 
-                const newFlashcard = new Flashcard(topicId, question, answer);
+                const newFlashcard = new Flashcard(question, answer, topicId);
                 await this.storage.saveFlashcard(newFlashcard);
                 this.ui.showNotification('flashcard created successfully', 'success');
             }

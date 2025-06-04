@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Topic = require('../models/Topic');
-const { isAuthenticated } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 
 // Apply authentication middleware to all routes
-router.use(isAuthenticated);
+router.use(requireAuth);
 
 // GET /api/topics - Get all topics or topics by course
 router.get('/', async (req, res) => {
@@ -12,14 +12,15 @@ router.get('/', async (req, res) => {
         const { courseId } = req.query;
         const userId = req.session.userId;
         
-        if (!courseId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Course ID is required'
-            });
+        let topics;
+        
+        if (courseId) {
+            // Get topics for a specific course
+            topics = await Topic.findByCourseId(courseId, userId);
+        } else {
+            // Get all topics for the user
+            topics = await Topic.findByUserId(userId);
         }
-
-        const topics = await Topic.findByCourseId(courseId, userId);
         
         res.json({
             success: true,
@@ -39,16 +40,18 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const userId = req.session.userId;
-        const topic = await Topic.findById(req.params.id, userId);
+        const topic = await Topic.findByIdAndUserId(req.params.id, userId);
+        
         if (!topic) {
             return res.status(404).json({
                 success: false,
                 message: 'Topic not found'
             });
         }
+        
         res.json({
             success: true,
-            data: topic
+            data: topic.toJSON()
         });
     } catch (error) {
         console.error('Error fetching topic:', error);
@@ -63,7 +66,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/topics - Create a new topic
 router.post('/', async (req, res) => {
     try {
-        const { courseId, title, description } = req.body;
+        const { course_id, title, description } = req.body;
         const userId = req.session.userId;
         
         if (!title) {
@@ -73,19 +76,18 @@ router.post('/', async (req, res) => {
             });
         }
 
-        if (!courseId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Course ID is required'
-            });
-        }
+        const topicData = {
+            user_id: userId,
+            course_id: course_id || null, // Allow null for standalone topics
+            title,
+            description: description || ''
+        };
 
-        const topic = new Topic(courseId, title, description, userId);
-        const savedTopic = await topic.save();
+        const topic = await Topic.create(topicData);
         
         res.status(201).json({
             success: true,
-            data: savedTopic,
+            data: topic.toJSON(),
             message: 'Topic created successfully'
         });
     } catch (error) {
@@ -101,7 +103,7 @@ router.post('/', async (req, res) => {
 // PUT /api/topics/:id - Update a topic
 router.put('/:id', async (req, res) => {
     try {
-        const { title, description } = req.body;
+        const { title, description, course_id } = req.body;
         const userId = req.session.userId;
         
         if (!title) {
@@ -111,25 +113,23 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        const existingTopic = await Topic.findById(req.params.id, userId);
-        if (!existingTopic) {
+        const topic = await Topic.findByIdAndUserId(req.params.id, userId);
+        if (!topic) {
             return res.status(404).json({
                 success: false,
                 message: 'Topic not found'
             });
         }
 
-        // Create a topic instance and update it
-        const topic = Object.assign(new Topic(existingTopic.courseId), existingTopic);
-        topic.title = title;
-        topic.description = description;
-        topic.userId = userId;
-        
-        const updatedTopic = await topic.update();
+        const updatedTopic = await topic.update({
+            title,
+            description: description || '',
+            course_id: course_id || null
+        });
         
         res.json({
             success: true,
-            data: updatedTopic,
+            data: updatedTopic.toJSON(),
             message: 'Topic updated successfully'
         });
     } catch (error) {
@@ -146,20 +146,28 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         const userId = req.session.userId;
-        const deletedTopic = await Topic.delete(req.params.id, userId);
+        const topic = await Topic.findByIdAndUserId(req.params.id, userId);
         
-        if (!deletedTopic) {
+        if (!topic) {
             return res.status(404).json({
                 success: false,
                 message: 'Topic not found'
             });
         }
 
-        res.json({
-            success: true,
-            data: deletedTopic,
-            message: 'Topic deleted successfully'
-        });
+        const deleted = await topic.delete();
+        
+        if (deleted) {
+            res.json({
+                success: true,
+                message: 'Topic deleted successfully'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to delete topic'
+            });
+        }
     } catch (error) {
         console.error('Error deleting topic:', error);
         res.status(500).json({

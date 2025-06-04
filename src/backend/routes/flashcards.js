@@ -1,22 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const Flashcard = require('../models/Flashcard');
+const { requireAuth } = require('../middleware/auth');
+
+// Apply authentication middleware to all routes
+router.use(requireAuth);
 
 // GET /api/flashcards - Get all flashcards or flashcards by topic
 router.get('/', async (req, res) => {
     try {
         const { topicId } = req.query;
+        const userId = req.session.userId;
         let flashcards;
         
         if (topicId) {
-            flashcards = await Flashcard.findByTopicId(topicId);
+            flashcards = await Flashcard.findByTopicId(topicId, userId);
         } else {
-            flashcards = await Flashcard.findAll();
+            flashcards = await Flashcard.findByUserId(userId);
         }
         
         res.json({
             success: true,
-            data: flashcards
+            data: flashcards.map(flashcard => flashcard.toJSON())
         });
     } catch (error) {
         console.error('Error fetching flashcards:', error);
@@ -31,16 +36,19 @@ router.get('/', async (req, res) => {
 // GET /api/flashcards/:id - Get a specific flashcard
 router.get('/:id', async (req, res) => {
     try {
-        const flashcard = await Flashcard.findById(req.params.id);
+        const userId = req.session.userId;
+        const flashcard = await Flashcard.findByIdAndUserId(req.params.id, userId);
+        
         if (!flashcard) {
             return res.status(404).json({
                 success: false,
                 message: 'Flashcard not found'
             });
         }
+        
         res.json({
             success: true,
-            data: flashcard
+            data: flashcard.toJSON()
         });
     } catch (error) {
         console.error('Error fetching flashcard:', error);
@@ -55,21 +63,28 @@ router.get('/:id', async (req, res) => {
 // POST /api/flashcards - Create a new flashcard
 router.post('/', async (req, res) => {
     try {
-        const { topicId, question, answer } = req.body;
+        const { topic_id, question, answer } = req.body;
+        const userId = req.session.userId;
         
-        if (!topicId || !question || !answer) {
+        if (!topic_id || !question || !answer) {
             return res.status(400).json({
                 success: false,
                 message: 'Topic ID, question, and answer are required'
             });
         }
 
-        const flashcard = new Flashcard(topicId, question, answer, req.session.userId);
-        const savedFlashcard = await flashcard.save();
+        const flashcardData = {
+            user_id: userId,
+            topic_id,
+            question,
+            answer
+        };
+
+        const flashcard = await Flashcard.create(flashcardData);
         
         res.status(201).json({
             success: true,
-            data: savedFlashcard,
+            data: flashcard.toJSON(),
             message: 'Flashcard created successfully'
         });
     } catch (error) {
@@ -85,7 +100,8 @@ router.post('/', async (req, res) => {
 // PUT /api/flashcards/:id - Update a flashcard
 router.put('/:id', async (req, res) => {
     try {
-        const { question, answer } = req.body;
+        const { question, answer, topic_id } = req.body;
+        const userId = req.session.userId;
         
         if (!question || !answer) {
             return res.status(400).json({
@@ -94,24 +110,23 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        const existingFlashcard = await Flashcard.findById(req.params.id);
-        if (!existingFlashcard) {
+        const flashcard = await Flashcard.findByIdAndUserId(req.params.id, userId);
+        if (!flashcard) {
             return res.status(404).json({
                 success: false,
                 message: 'Flashcard not found'
             });
         }
 
-        // Create a flashcard instance and update it
-        const flashcard = Object.assign(new Flashcard(), existingFlashcard);
-        flashcard.question = question;
-        flashcard.answer = answer;
-        
-        const updatedFlashcard = await flashcard.update();
+        const updatedFlashcard = await flashcard.update({
+            question,
+            answer,
+            topic_id: topic_id || flashcard.topic_id
+        });
         
         res.json({
             success: true,
-            data: updatedFlashcard,
+            data: updatedFlashcard.toJSON(),
             message: 'Flashcard updated successfully'
         });
     } catch (error) {
@@ -127,21 +142,21 @@ router.put('/:id', async (req, res) => {
 // POST /api/flashcards/:id/review - Mark flashcard as reviewed
 router.post('/:id/review', async (req, res) => {
     try {
-        const existingFlashcard = await Flashcard.findById(req.params.id);
-        if (!existingFlashcard) {
+        const userId = req.session.userId;
+        const flashcard = await Flashcard.findByIdAndUserId(req.params.id, userId);
+        
+        if (!flashcard) {
             return res.status(404).json({
                 success: false,
                 message: 'Flashcard not found'
             });
         }
 
-        // Create a flashcard instance and update review
-        const flashcard = Object.assign(new Flashcard(), existingFlashcard);
-        const updatedFlashcard = await flashcard.updateReview();
+        const updatedFlashcard = await flashcard.markReviewed();
         
         res.json({
             success: true,
-            data: updatedFlashcard,
+            data: updatedFlashcard.toJSON(),
             message: 'Flashcard review updated successfully'
         });
     } catch (error) {
@@ -154,23 +169,52 @@ router.post('/:id/review', async (req, res) => {
     }
 });
 
+// GET /api/flashcards/study/:topicId - Get flashcards for study mode
+router.get('/study/:topicId', async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const flashcards = await Flashcard.findForStudy(req.params.topicId, userId);
+        
+        res.json({
+            success: true,
+            data: flashcards
+        });
+    } catch (error) {
+        console.error('Error fetching study flashcards:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch study flashcards',
+            error: error.message
+        });
+    }
+});
+
 // DELETE /api/flashcards/:id - Delete a flashcard
 router.delete('/:id', async (req, res) => {
     try {
-        const deletedFlashcard = await Flashcard.delete(req.params.id);
+        const userId = req.session.userId;
+        const flashcard = await Flashcard.findByIdAndUserId(req.params.id, userId);
         
-        if (!deletedFlashcard) {
+        if (!flashcard) {
             return res.status(404).json({
                 success: false,
                 message: 'Flashcard not found'
             });
         }
 
-        res.json({
-            success: true,
-            data: deletedFlashcard,
-            message: 'Flashcard deleted successfully'
-        });
+        const deleted = await flashcard.delete();
+        
+        if (deleted) {
+            res.json({
+                success: true,
+                message: 'Flashcard deleted successfully'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to delete flashcard'
+            });
+        }
     } catch (error) {
         console.error('Error deleting flashcard:', error);
         res.status(500).json({

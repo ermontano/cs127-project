@@ -1,10 +1,13 @@
 const { pool } = require('../config/database');
 
+/**
+ * Setup database tables for the flashcards application
+ */
 const createTables = async () => {
     try {
-        console.log('🔧 Setting up database tables with user authentication...');
+        console.log('🔧 Setting up database tables...');
 
-        // Drop existing tables first (in reverse dependency order)
+        // Drop existing tables (in reverse dependency order)
         await pool.query('DROP TABLE IF EXISTS flashcards CASCADE');
         await pool.query('DROP TABLE IF EXISTS topics CASCADE');
         await pool.query('DROP TABLE IF EXISTS courses CASCADE');
@@ -53,13 +56,13 @@ const createTables = async () => {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ Courses table created with user relationship');
+        console.log('✅ Courses table created');
 
-        // Create topics table with required course_id
+        // Create topics table with optional course_id and user relationship
         await pool.query(`
             CREATE TABLE topics (
                 id SERIAL PRIMARY KEY,
-                course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 title VARCHAR(255) NOT NULL,
                 description TEXT,
@@ -67,9 +70,9 @@ const createTables = async () => {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ Topics table created with required course relationship');
+        console.log('✅ Topics table created');
 
-        // Create flashcards table with SERIAL PRIMARY KEY
+        // Create flashcards table with user relationship
         await pool.query(`
             CREATE TABLE flashcards (
                 id SERIAL PRIMARY KEY,
@@ -83,7 +86,7 @@ const createTables = async () => {
                 review_count INTEGER DEFAULT 0
             )
         `);
-        console.log('✅ Flashcards table created with user relationship');
+        console.log('✅ Flashcards table created');
 
         // Create indexes for better performance
         await pool.query(`CREATE INDEX idx_courses_user_id ON courses(user_id)`);
@@ -96,9 +99,9 @@ const createTables = async () => {
         console.log('✅ Database indexes created');
 
         console.log('🎉 Database setup completed successfully!');
-        console.log('💡 All tables now support user authentication and relationships');
+        console.log('💡 All tables support user authentication and data isolation');
         console.log('🔐 Users can now have their own private courses, topics, and flashcards');
-        console.log('📝 Topics must be created within a course');
+        console.log('📝 Topics can be created with or without courses');
         
     } catch (error) {
         console.error('❌ Error setting up database:', error);

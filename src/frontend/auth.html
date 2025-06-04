@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flashcards - Login & Signup</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         html {
@@ -46,12 +46,12 @@
 
         .forms-container {
             position: relative;
-            min-height: 300px; /* Default for login */
+            min-height: 300px;
             transition: min-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .forms-container.signup-active {
-            min-height: 490px; /* Increased height for signup */
+            min-height: 490px;
         }
 
         .auth-card h1 {
@@ -110,16 +110,6 @@
             pointer-events: all;
         }
 
-        .auth-form.slide-out-left {
-            opacity: 0;
-            transform: translateX(-30px);
-        }
-
-        .auth-form.slide-out-right {
-            opacity: 0;
-            transform: translateX(30px);
-        }
-
         .form-group {
             margin-bottom: 20px;
             text-align: left;
@@ -141,7 +131,6 @@
             font-size: 16px;
             transition: border-color 0.3s ease;
             box-sizing: border-box;
-            height: 48px;
         }
 
         .form-group input:focus {
@@ -149,8 +138,30 @@
             border-color: #667eea;
         }
 
-        .form-group input.error {
-            border-color: #e74c3c;
+        .password-input-container {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            transition: color 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: #667eea;
+        }
+
+        .password-input-container input {
+            padding-right: 45px;
         }
 
         .auth-btn {
@@ -201,119 +212,23 @@
         }
 
         .error-message.show, .success-message.show {
-            transform: translateY(0);
             opacity: 1;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .password-requirements {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-            text-align: left;
+            transform: translateY(0);
         }
 
         .brand-logo {
             font-size: 3rem;
             margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .brand-subtitle {
             color: #666;
             margin-bottom: 30px;
-            font-size: 1.1rem;
-        }
-
-        .password-toggle {
-            position: absolute;
-            right: 24px;
-            top: 56px;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #666;
-            padding: 5px;
-            font-size: 16px;
-            transition: color 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            z-index: 2;
-        }
-
-        .password-toggle:hover {
-            color: #667eea;
-        }
-
-        .form-group input[type="password"],
-        .form-group input[type="text"] {
-            padding-right: 45px;
-            height: 48px;
-        }
-
-        /* Add styles for course assignment modal */
-        .modal select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e1e5e9;
-            border-radius: 10px;
-            font-size: 16px;
-            margin-bottom: 20px;
-        }
-
-        /* Style for unassigned topics list */
-        .unassigned-topics-list {
-            margin-top: 20px;
-        }
-
-        .topic-item {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .topic-item h3 {
-            margin: 0 0 10px 0;
-            color: #333;
-        }
-
-        .topic-item p {
-            margin: 0 0 15px 0;
-            color: #666;
-        }
-
-        .assign-course-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .assign-course-btn:hover {
-            background: #764ba2;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -342,11 +257,13 @@
                     </div>
                     <div class="form-group">
                         <label for="login-password">Password</label>
-                        <input type="password" id="login-password" name="password" required 
-                               placeholder="Enter your password">
-                        <button type="button" class="password-toggle" data-target="login-password">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
+                        <div class="password-input-container">
+                            <input type="password" id="login-password" name="password" required 
+                                   placeholder="Enter your password">
+                            <button type="button" class="password-toggle" data-target="login-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="auth-btn" id="login-btn">
                         Login
@@ -367,22 +284,23 @@
                     </div>
                     <div class="form-group">
                         <label for="signup-password">Password</label>
-                        <input type="password" id="signup-password" name="password" required 
-                               placeholder="Create a password" minlength="6">
-                        <button type="button" class="password-toggle" data-target="signup-password">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
-                        <div class="password-requirements">
-                            Password must be at least 6 characters long
+                        <div class="password-input-container">
+                            <input type="password" id="signup-password" name="password" required 
+                                   placeholder="Create a password" minlength="6">
+                            <button type="button" class="password-toggle" data-target="signup-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="signup-confirm-password">Confirm Password</label>
-                        <input type="password" id="signup-confirm-password" name="confirm-password" required 
-                               placeholder="Confirm your password">
-                        <button type="button" class="password-toggle" data-target="signup-confirm-password">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
+                        <div class="password-input-container">
+                            <input type="password" id="signup-confirm-password" name="confirm-password" required 
+                                   placeholder="Confirm your password">
+                            <button type="button" class="password-toggle" data-target="signup-confirm-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="auth-btn" id="signup-btn">
                         Create Account
@@ -392,90 +310,56 @@
         </div>
     </div>
 
-    <!-- Course Assignment Modal -->
-    <div id="course-assignment-modal" class="modal">
-        <div class="modal-content">
-            <h2>Assign to Course</h2>
-            <div class="form-group">
-                <label for="course-select">Select Course</label>
-                <select id="course-select" required>
-                    <!-- Options will be populated dynamically -->
-                </select>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('course-assignment-modal').style.display='none'">
-                    Cancel
-                </button>
-                <button type="button" class="btn btn-primary" onclick="topicsManager.assignCourse(topicsManager.currentTopicId, document.getElementById('course-select').value)">
-                    Assign Course
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        // Tab switching with smooth animations
+        // Tab switching functionality
         function switchTab(tab) {
             const currentTab = document.querySelector('.auth-tab.active');
             const targetTab = document.getElementById(tab + '-tab');
             
-            // Don't switch if already active
             if (currentTab === targetTab) return;
             
             const currentForm = document.querySelector('.auth-form.active');
             const targetForm = document.getElementById(tab + '-form');
             const formsContainer = document.querySelector('.forms-container');
             
-            // Determine slide direction
-            const isMovingRight = tab === 'signup';
-            
-            // Clear messages with fade effect
             hideMessages();
             
-            // Update container size for target form
             if (tab === 'signup') {
                 formsContainer.classList.add('signup-active');
             } else {
                 formsContainer.classList.remove('signup-active');
             }
             
-            // Update tab buttons with stagger effect
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
             
-            // Add slide-out animation to current form
-            if (currentForm) {
-                currentForm.classList.add(isMovingRight ? 'slide-out-left' : 'slide-out-right');
-                currentForm.classList.remove('active');
-            }
-            
-            // Wait for slide-out animation, then slide-in new form
-            setTimeout(() => {
-                targetTab.classList.add('active');
-                
-                // Reset and show target form
-                targetForm.classList.remove('slide-out-left', 'slide-out-right');
-                targetForm.style.transform = isMovingRight ? 'translateX(30px)' : 'translateX(-30px)';
-                targetForm.classList.add('active');
-                
-                // Trigger reflow for smooth animation
-                targetForm.offsetHeight;
-                
-                // Animate to final position
-                setTimeout(() => {
-                    targetForm.style.transform = 'translateX(0)';
-                }, 50);
-                
-            }, 200); // Half of the transition duration
+            targetTab.classList.add('active');
+            targetForm.classList.add('active');
         }
 
-        // Add event listeners for tabs
+        // Event listeners
+        document.getElementById('login-tab').addEventListener('click', () => switchTab('login'));
+        document.getElementById('signup-tab').addEventListener('click', () => switchTab('signup'));
+
+        // Password toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('login-tab').addEventListener('click', function() {
-                switchTab('login');
-            });
-            
-            document.getElementById('signup-tab').addEventListener('click', function() {
-                switchTab('signup');
+            // Add event listeners to all password toggle buttons
+            document.querySelectorAll('.password-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    const icon = this.querySelector('i');
+                    
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
             });
         });
 
@@ -484,62 +368,35 @@
             const errorDiv = document.getElementById('error-message');
             const successDiv = document.getElementById('success-message');
             
-            // Hide success message first
             successDiv.classList.remove('show');
-            setTimeout(() => {
-                successDiv.style.display = 'none';
-            }, 300);
+            successDiv.style.display = 'none';
             
-            // Show error message
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
-            
-            // Trigger animation after a frame
-            setTimeout(() => {
-                errorDiv.classList.add('show');
-            }, 10);
+            setTimeout(() => errorDiv.classList.add('show'), 10);
         }
 
         function showSuccess(message) {
             const errorDiv = document.getElementById('error-message');
             const successDiv = document.getElementById('success-message');
             
-            // Hide error message first
             errorDiv.classList.remove('show');
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 300);
+            errorDiv.style.display = 'none';
             
-            // Show success message
             successDiv.textContent = message;
             successDiv.style.display = 'block';
-            
-            // Trigger animation after a frame
-            setTimeout(() => {
-                successDiv.classList.add('show');
-            }, 10);
+            setTimeout(() => successDiv.classList.add('show'), 10);
         }
 
         function hideMessages() {
-            const errorDiv = document.getElementById('error-message');
-            const successDiv = document.getElementById('success-message');
-            
-            // Remove show class for smooth fade out
-            errorDiv.classList.remove('show');
-            successDiv.classList.remove('show');
-            
-            // Hide after animation completes
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-                successDiv.style.display = 'none';
-            }, 300);
+            document.getElementById('error-message').classList.remove('show');
+            document.getElementById('success-message').classList.remove('show');
         }
 
-        // Loading state functions
         function setLoading(formType, isLoading) {
             const btn = document.getElementById(formType + '-btn');
             if (isLoading) {
-                btn.innerHTML = '<span class="loading"></span>Processing...';
+                btn.innerHTML = 'Loading...';
                 btn.disabled = true;
             } else {
                 btn.innerHTML = formType === 'login' ? 'Login' : 'Create Account';
@@ -547,29 +404,24 @@
             }
         }
 
-        // API request function
+        // API request helper
         async function apiRequest(endpoint, data) {
             const response = await fetch(`/api/auth/${endpoint}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
 
             const result = await response.json();
-            
             if (!response.ok) {
                 throw new Error(result.message || 'Request failed');
             }
-
             return result;
         }
 
         // Login form handler
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const formData = new FormData(e.target);
             const data = {
                 identifier: formData.get('identifier'),
@@ -582,18 +434,10 @@
             }
 
             setLoading('login', true);
-
             try {
-                const result = await apiRequest('login', data);
-                // Only hide messages on success
-                hideMessages();
+                await apiRequest('login', data);
                 showSuccess('Login successful! Redirecting...');
-                
-                // Redirect to main app after a short delay
-                setTimeout(() => {
-                    window.location.href = '/app';
-                }, 1500);
-
+                setTimeout(() => window.location.href = '/', 1500);
             } catch (error) {
                 showError(error.message);
             } finally {
@@ -601,29 +445,9 @@
             }
         });
 
-        // Add password toggle functionality
-        document.querySelectorAll('.password-toggle').forEach(button => {
-            button.addEventListener('click', function() {
-                const targetId = this.getAttribute('data-target');
-                const passwordInput = document.getElementById(targetId);
-                const icon = this.querySelector('i');
-                
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    icon.classList.remove('fa-eye');
-                    icon.classList.add('fa-eye-slash');
-                } else {
-                    passwordInput.type = 'password';
-                    icon.classList.remove('fa-eye-slash');
-                    icon.classList.add('fa-eye');
-                }
-            });
-        });
-
         // Signup form handler
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const formData = new FormData(e.target);
             const data = {
                 username: formData.get('username'),
@@ -632,7 +456,6 @@
             };
             const confirmPassword = formData.get('confirm-password');
 
-            // Basic validation
             if (!data.username || !data.email || !data.password || !confirmPassword) {
                 showError('Please fill in all fields');
                 return;
@@ -648,7 +471,6 @@
                 return;
             }
 
-            // Email format validation
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(data.email)) {
                 showError('Please enter a valid email address');
@@ -656,26 +478,16 @@
             }
 
             setLoading('signup', true);
-
             try {
-                const result = await apiRequest('register', data);
-                // Only hide messages on success
-                hideMessages();
+                await apiRequest('register', data);
                 showSuccess('Account created successfully! Redirecting...');
-                
-                // Redirect to main app after a short delay
-                setTimeout(() => {
-                    window.location.href = '/app';
-                }, 1500);
-
+                setTimeout(() => window.location.href = '/', 1500);
             } catch (error) {
                 showError(error.message);
             } finally {
                 setLoading('signup', false);
             }
         });
-
-        // Note: Auth status check removed - server handles redirects for authenticated users
     </script>
 </body>
 </html> 
