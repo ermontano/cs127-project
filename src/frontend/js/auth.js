@@ -64,6 +64,82 @@ class AuthManager {
         if (logoutBtn) {
             logoutBtn.addEventListener('click', this.logout.bind(this));
         }
+
+        // Edit Profile button
+        const editProfileBtn = document.getElementById('edit-profile-btn');
+        if (editProfileBtn) {
+            editProfileBtn.addEventListener('click', () => {
+                userDropdown.classList.add('hidden'); // Close dropdown
+                this.openEditProfileModal();
+            });
+        }
+
+        // Change Password button
+        const changePasswordBtn = document.getElementById('change-password-btn');
+        if (changePasswordBtn) {
+            changePasswordBtn.addEventListener('click', () => {
+                userDropdown.classList.add('hidden'); // Close dropdown
+                this.openChangePasswordModal();
+            });
+        }
+
+        // Delete Account button
+        const deleteAccountBtn = document.getElementById('delete-account-btn');
+        if (deleteAccountBtn) {
+            deleteAccountBtn.addEventListener('click', () => {
+                userDropdown.classList.add('hidden'); // Close dropdown
+                this.openDeleteAccountModal();
+            });
+        }
+
+        // Edit Profile form
+        const editProfileForm = document.getElementById('edit-profile-form');
+        if (editProfileForm) {
+            editProfileForm.addEventListener('submit', this.handleEditProfile.bind(this));
+        }
+
+        // Change Password form
+        const changePasswordForm = document.getElementById('change-password-form');
+        if (changePasswordForm) {
+            changePasswordForm.addEventListener('submit', this.handleChangePassword.bind(this));
+        }
+
+        // Delete Account form
+        const deleteAccountForm = document.getElementById('delete-account-form');
+        if (deleteAccountForm) {
+            deleteAccountForm.addEventListener('submit', this.handleDeleteAccount.bind(this));
+        }
+
+        // Modal close buttons
+        this.setupModalCloseHandlers();
+        
+        // Setup password toggles
+        this.setupPasswordToggles();
+    }
+
+    setupPasswordToggles() {
+        // Add event listeners for all password toggle buttons
+        const passwordToggles = document.querySelectorAll('.password-toggle');
+        
+        passwordToggles.forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent form submission
+                
+                const targetId = toggle.getAttribute('data-target');
+                const passwordInput = document.getElementById(targetId);
+                const icon = toggle.querySelector('i');
+                
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    passwordInput.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        });
     }
 
     updateUI() {
@@ -247,6 +323,272 @@ class AuthManager {
 
     isAuthenticated() {
         return this.user !== null;
+    }
+
+    // Account management methods
+    setupModalCloseHandlers() {
+        // Close buttons for account management modals
+        const editProfileCloseBtn = document.getElementById('close-edit-profile-modal');
+        const changePasswordCloseBtn = document.getElementById('close-change-password-modal');
+        const deleteAccountCloseBtn = document.getElementById('close-delete-account-modal');
+        const cancelEditProfileBtn = document.getElementById('cancel-edit-profile-btn');
+        const cancelChangePasswordBtn = document.getElementById('cancel-change-password-btn');
+        const cancelDeleteAccountBtn = document.getElementById('cancel-delete-account-btn');
+
+        if (editProfileCloseBtn) {
+            editProfileCloseBtn.addEventListener('click', () => this.closeModal('edit-profile-modal'));
+        }
+        if (changePasswordCloseBtn) {
+            changePasswordCloseBtn.addEventListener('click', () => this.closeModal('change-password-modal'));
+        }
+        if (deleteAccountCloseBtn) {
+            deleteAccountCloseBtn.addEventListener('click', () => this.closeModal('delete-account-modal'));
+        }
+        if (cancelEditProfileBtn) {
+            cancelEditProfileBtn.addEventListener('click', () => this.closeModal('edit-profile-modal'));
+        }
+        if (cancelChangePasswordBtn) {
+            cancelChangePasswordBtn.addEventListener('click', () => this.closeModal('change-password-modal'));
+        }
+        if (cancelDeleteAccountBtn) {
+            cancelDeleteAccountBtn.addEventListener('click', () => this.closeModal('delete-account-modal'));
+        }
+
+        // Close modals when clicking backdrop - only for delete account modal
+        const deleteAccountModal = document.getElementById('delete-account-modal');
+
+        if (deleteAccountModal) {
+            deleteAccountModal.addEventListener('click', (e) => {
+                if (e.target === deleteAccountModal) {
+                    this.closeModal('delete-account-modal');
+                }
+            });
+        }
+    }
+
+    openEditProfileModal() {
+        const modal = document.getElementById('edit-profile-modal');
+        const usernameInput = document.getElementById('edit-username');
+        const emailInput = document.getElementById('edit-email');
+
+        // Pre-fill current user data
+        if (this.user) {
+            usernameInput.value = this.user.username;
+            emailInput.value = this.user.email;
+        }
+
+        // Show modal
+        modal.classList.add('show');
+        setTimeout(() => { 
+            modal.style.opacity = '1'; 
+            usernameInput.focus();
+        }, 10);
+    }
+
+    openChangePasswordModal() {
+        const modal = document.getElementById('change-password-modal');
+        const currentPasswordInput = document.getElementById('current-password-change');
+        const newPasswordInput = document.getElementById('new-password-change');
+        const confirmNewPasswordInput = document.getElementById('confirm-new-password-change');
+        const passwordRequirements = document.getElementById('password-requirements');
+
+        // Clear all password fields
+        currentPasswordInput.value = '';
+        newPasswordInput.value = '';
+        confirmNewPasswordInput.value = '';
+        passwordRequirements.classList.add('hidden');
+
+        // Show password requirements when user starts typing
+        newPasswordInput.addEventListener('input', () => {
+            if (newPasswordInput.value.length > 0) {
+                passwordRequirements.classList.remove('hidden');
+                if (newPasswordInput.value.length >= 6) {
+                    passwordRequirements.style.color = 'var(--success-500)';
+                    passwordRequirements.textContent = '✓ Password meets requirements';
+                } else {
+                    passwordRequirements.style.color = 'var(--warning-500)';
+                    passwordRequirements.textContent = 'Password must be at least 6 characters long';
+                }
+            } else {
+                passwordRequirements.classList.add('hidden');
+            }
+        });
+
+        // Show modal
+        modal.classList.add('show');
+        setTimeout(() => { 
+            modal.style.opacity = '1';
+            currentPasswordInput.focus();
+        }, 10);
+    }
+
+    openDeleteAccountModal() {
+        const modal = document.getElementById('delete-account-modal');
+        const passwordInput = document.getElementById('delete-password');
+        const confirmationInput = document.getElementById('delete-confirmation');
+
+        // Clear form
+        passwordInput.value = '';
+        confirmationInput.value = '';
+
+        // Show modal
+        modal.classList.add('show');
+        setTimeout(() => { 
+            modal.style.opacity = '1';
+            passwordInput.focus();
+        }, 10);
+    }
+
+    closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.opacity = '0';
+            setTimeout(() => { 
+                modal.classList.remove('show'); 
+            }, 300);
+        }
+    }
+
+    async handleEditProfile(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('edit-username').value.trim();
+        const email = document.getElementById('edit-email').value.trim();
+
+        // Validate inputs
+        if (!username || !email) {
+            this.showNotification('Please fill in all required fields', 'error');
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            this.showNotification('Please enter a valid email address', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/auth/update-profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username,
+                    email
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.user = result.user;
+                this.updateGreeting();
+                this.closeModal('edit-profile-modal');
+                this.showNotification('Profile updated successfully!', 'success');
+            } else {
+                this.showNotification(result.message || 'Failed to update profile', 'error');
+            }
+        } catch (error) {
+            console.error('Profile update error:', error);
+            this.showNotification('Network error occurred', 'error');
+        }
+    }
+
+    async handleChangePassword(e) {
+        e.preventDefault();
+
+        const currentPassword = document.getElementById('current-password-change').value;
+        const newPassword = document.getElementById('new-password-change').value;
+        const confirmNewPassword = document.getElementById('confirm-new-password-change').value;
+
+        // Validate inputs
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+            this.showNotification('Please fill in all password fields', 'error');
+            return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            this.showNotification('New passwords do not match', 'error');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            this.showNotification('New password must be at least 6 characters long', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/auth/change-password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.closeModal('change-password-modal');
+                this.showNotification('Password changed successfully!', 'success');
+            } else {
+                this.showNotification(result.message || 'Failed to change password', 'error');
+            }
+        } catch (error) {
+            console.error('Password change error:', error);
+            this.showNotification('Network error occurred', 'error');
+        }
+    }
+
+    async handleDeleteAccount(e) {
+        e.preventDefault();
+
+        const password = document.getElementById('delete-password').value;
+        const confirmation = document.getElementById('delete-confirmation').value;
+
+        // Validate inputs
+        if (!password) {
+            this.showNotification('Please enter your password', 'error');
+            return;
+        }
+
+        if (confirmation !== 'DELETE') {
+            this.showNotification('Please type "DELETE" to confirm', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/auth/delete-account', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showNotification('Account deleted successfully', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            } else {
+                this.showNotification(result.message || 'Failed to delete account', 'error');
+            }
+        } catch (error) {
+            console.error('Account deletion error:', error);
+            this.showNotification('Network error occurred', 'error');
+        }
+    }
+
+    showNotification(message, type) {
+        // Use the existing notification system from UIManager if available
+        if (window.uiManager && window.uiManager.showNotification) {
+            window.uiManager.showNotification(message, type);
+        } else {
+            // Fallback: simple alert
+            alert(message);
+        }
     }
 }
 

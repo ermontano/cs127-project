@@ -51,6 +51,16 @@
                                 </div>
                             </div>
                             <hr>
+                            <button id="edit-profile-btn" class="dropdown-item">
+                                <i class="fas fa-user-edit"></i> Edit Profile
+                            </button>
+                            <button id="change-password-btn" class="dropdown-item">
+                                <i class="fas fa-key"></i> Change Password
+                            </button>
+                            <button id="delete-account-btn" class="dropdown-item danger">
+                                <i class="fas fa-user-times"></i> Delete Account
+                            </button>
+                            <hr>
                             <button id="logout-btn" class="dropdown-item">
                                 <i class="fas fa-sign-out-alt"></i> Logout
                             </button>
@@ -342,6 +352,120 @@
                     <button id="cancel-confirm-btn" class="secondary-button">Cancel</button>
                     <button id="confirm-action-btn" class="danger-button">Confirm</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Edit Profile Modal -->
+        <div id="edit-profile-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Edit Profile</h3>
+                    <button id="close-edit-profile-modal" class="close-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="edit-profile-form">
+                    <div class="form-group">
+                        <label for="edit-username">Username</label>
+                        <input type="text" id="edit-username" required placeholder="Enter new username">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-email">Email</label>
+                        <input type="email" id="edit-email" required placeholder="Enter new email">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancel-edit-profile-btn" class="secondary-button">Cancel</button>
+                        <button type="submit" id="save-profile-btn" class="primary-button">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Change Password Modal -->
+        <div id="change-password-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Change Password</h3>
+                    <button id="close-change-password-modal" class="close-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="change-password-form">
+                    <div class="form-group">
+                        <label for="current-password-change">Current Password</label>
+                        <div class="password-input-container">
+                            <input type="password" id="current-password-change" required placeholder="Enter your current password">
+                            <button type="button" class="password-toggle" data-target="current-password-change">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password-change">New Password</label>
+                        <div class="password-input-container">
+                            <input type="password" id="new-password-change" required placeholder="Enter new password">
+                            <button type="button" class="password-toggle" data-target="new-password-change">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-requirements hidden" id="password-requirements">
+                            Password must be at least 6 characters long
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-new-password-change">Confirm New Password</label>
+                        <div class="password-input-container">
+                            <input type="password" id="confirm-new-password-change" required placeholder="Confirm new password">
+                            <button type="button" class="password-toggle" data-target="confirm-new-password-change">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancel-change-password-btn" class="secondary-button">Cancel</button>
+                        <button type="submit" id="save-password-btn" class="primary-button">Change Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete Account Confirmation Modal -->
+        <div id="delete-account-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Delete Account</h3>
+                    <button id="close-delete-account-modal" class="close-button">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="delete-account-warning">
+                    <div class="warning-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h4>This action cannot be undone!</h4>
+                    <p>Deleting your account will permanently remove:</p>
+                    <ul>
+                        <li>All your courses and topics</li>
+                        <li>All your flashcards</li>
+                        <li>Your study progress and statistics</li>
+                        <li>Your account information</li>
+                    </ul>
+                    <p><strong>Are you absolutely sure you want to delete your account?</strong></p>
+                </div>
+                <form id="delete-account-form">
+                    <div class="form-group">
+                        <label for="delete-password">Enter your password to confirm:</label>
+                        <input type="password" id="delete-password" required placeholder="Enter your password">
+                    </div>
+                    <div class="form-group">
+                        <label for="delete-confirmation">Type "DELETE" to confirm:</label>
+                        <input type="text" id="delete-confirmation" required placeholder="Type DELETE">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancel-delete-account-btn" class="secondary-button">Cancel</button>
+                        <button type="submit" id="confirm-delete-account-btn" class="danger-button">Delete My Account</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

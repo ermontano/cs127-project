@@ -437,12 +437,15 @@ studyModeStyle.textContent = `
         transition: transform 0.6s;
         /* Remove cursor pointer since card is not clickable */
         cursor: default;
+        /* Disable all hover effects to prevent flip interference */
+        pointer-events: auto;
     }
 
-    /* Subtle hover effect for visual feedback only */
-    .study-flashcard:hover {
-        filter: brightness(1.02);
-        transition: filter 0.2s ease;
+    /* Remove all hover effects - they were causing flip state conflicts */
+    .study-flashcard:hover,
+    .study-flashcard.flipped:hover,
+    .study-flashcard:not(.flipped):hover {
+        /* No hover effects to prevent interference with flip animation */
     }
 
     /* Prevent other elements from interfering with clicks */

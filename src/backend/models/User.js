@@ -155,6 +155,103 @@ class User {
     }
 
     /**
+     * Update user profile
+     */
+    static async updateProfile(userId, updateData) {
+        const { username, email } = updateData;
+        
+        try {
+            const query = `
+                UPDATE users 
+                SET username = $1, email = $2, updated_at = CURRENT_TIMESTAMP
+                WHERE id = $3 
+                RETURNING id, username, email, created_at, updated_at
+            `;
+            const params = [username, email, userId];
+            
+            const result = await pool.query(query, params);
+            
+            if (result.rows.length === 0) {
+                throw new Error('User not found');
+            }
+            
+            return new User(result.rows[0]);
+        } catch (error) {
+            if (error.code === '23505') {
+                if (error.constraint === 'users_email_key') {
+                    throw new Error('Email already exists');
+                } else if (error.constraint === 'users_username_key') {
+                    throw new Error('Username already exists');
+                }
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Change user password
+     */
+    static async changePassword(userId, newPassword) {
+        try {
+            const saltRounds = 12;
+            const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+            
+            const query = `
+                UPDATE users 
+                SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = $2
+            `;
+            const params = [passwordHash, userId];
+            
+            const result = await pool.query(query, params);
+            
+            if (result.rowCount === 0) {
+                throw new Error('User not found');
+            }
+            
+            return true;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Delete user account and all associated data
+     */
+    static async deleteAccount(userId) {
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            // Delete in correct order to handle foreign key constraints
+            // 1. Delete flashcards first (they reference topics)
+            await client.query('DELETE FROM flashcards WHERE user_id = $1', [userId]);
+            
+            // 2. Delete topics (they reference courses)
+            await client.query('DELETE FROM topics WHERE user_id = $1', [userId]);
+            
+            // 3. Delete courses
+            await client.query('DELETE FROM courses WHERE user_id = $1', [userId]);
+            
+            // 4. Finally delete the user
+            const result = await client.query('DELETE FROM users WHERE id = $1', [userId]);
+            
+            if (result.rowCount === 0) {
+                throw new Error('User not found');
+            }
+            
+            await client.query('COMMIT');
+            
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
      * Convert to JSON (excluding sensitive data)
      */
     toJSON() {

@@ -172,4 +172,197 @@ router.get('/me', requireAuth, async (req, res) => {
     }
 });
 
+// Update user profile
+router.put('/update-profile', requireAuth, async (req, res) => {
+    try {
+        const { username, email } = req.body;
+        const userId = req.session.userId;
+
+        // Validate input
+        if (!username || !email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Username and email are required'
+            });
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email format'
+            });
+        }
+
+        // Validate username
+        if (username.length < 3 || username.length > 50) {
+            return res.status(400).json({
+                success: false,
+                message: 'Username must be between 3 and 50 characters'
+            });
+        }
+
+        // Update user profile (without password)
+        const updatedUser = await User.updateProfile(userId, {
+            username,
+            email
+        });
+
+        // Update session if username changed
+        req.session.username = username;
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: updatedUser.toJSON()
+        });
+
+    } catch (error) {
+        console.error('Profile update error:', error);
+        
+        if (error.message === 'Email already exists' || error.message === 'Username already exists') {
+            return res.status(409).json({
+                success: false,
+                message: error.message
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update profile'
+        });
+    }
+});
+
+// Change user password
+router.put('/change-password', requireAuth, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.session.userId;
+
+        // Validate input
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Current password and new password are required'
+            });
+        }
+
+        // Validate new password strength
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'New password must be at least 6 characters long'
+            });
+        }
+
+        // Get current user
+        const currentUser = await User.findById(userId);
+        if (!currentUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Verify current password
+        const userData = await User.findByEmail(currentUser.email);
+        if (!userData) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const isValidPassword = await User.verifyPassword(currentPassword, userData.passwordHash);
+        if (!isValidPassword) {
+            return res.status(401).json({
+                success: false,
+                message: 'Current password is incorrect'
+            });
+        }
+
+        // Update password
+        await User.changePassword(userId, newPassword);
+
+        res.json({
+            success: true,
+            message: 'Password changed successfully'
+        });
+
+    } catch (error) {
+        console.error('Password change error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to change password'
+        });
+    }
+});
+
+// Delete user account
+router.delete('/delete-account', requireAuth, async (req, res) => {
+    try {
+        const { password } = req.body;
+        const userId = req.session.userId;
+
+        // Validate input
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password is required'
+            });
+        }
+
+        // Get current user
+        const currentUser = await User.findById(userId);
+        if (!currentUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Verify password
+        const userData = await User.findByEmail(currentUser.email);
+        if (!userData) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const isValidPassword = await User.verifyPassword(password, userData.passwordHash);
+        if (!isValidPassword) {
+            return res.status(401).json({
+                success: false,
+                message: 'Password is incorrect'
+            });
+        }
+
+        // Delete user account and all associated data
+        await User.deleteAccount(userId);
+
+        // Destroy session
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Session destruction error:', err);
+            }
+        });
+
+        res.clearCookie('connect.sid');
+        res.json({
+            success: true,
+            message: 'Account deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Account deletion error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete account'
+        });
+    }
+});
+
 module.exports = router; 

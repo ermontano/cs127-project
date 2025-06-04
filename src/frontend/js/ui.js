@@ -173,28 +173,52 @@ class UIManager {
      */
     initializeActionMenuHandler() {
         document.addEventListener('click', (e) => {
-            // Close all open action menus when clicking outside
-            if (!e.target.closest('.action-menu')) {
+            const trigger = e.target.closest('.action-menu-trigger');
+            const clickedInsideExistingMenu = e.target.closest('.action-menu-dropdown');
+
+            // Close all open action menus if click is outside any action menu trigger AND outside any open dropdown
+            if (!trigger && !clickedInsideExistingMenu) {
                 document.querySelectorAll('.action-menu-dropdown.show').forEach(dropdown => {
                     dropdown.classList.remove('show');
+                    const parentCard = dropdown.closest('.topic-card, .flashcard-item, .course-item-card');
+                    if (parentCard) {
+                        parentCard.classList.remove('has-open-menu');
+                    }
                 });
             }
-            
+
             // Handle action menu trigger clicks
-            if (e.target.closest('.action-menu-trigger')) {
-                e.stopPropagation();
-                const trigger = e.target.closest('.action-menu-trigger');
-                const dropdown = trigger.nextElementSibling;
-                
-                // Close other open dropdowns
+            if (trigger) {
+                e.stopPropagation(); // Stop propagation to prevent immediate closing by the listener above
+                const menu = trigger.closest('.action-menu');
+                const dropdown = menu.querySelector('.action-menu-dropdown');
+                const parentCard = menu.closest('.topic-card, .flashcard-item, .course-item-card');
+
+                const wasOpen = dropdown.classList.contains('show');
+
+                // Close all other open dropdowns and remove 'has-open-menu' from their parent cards
                 document.querySelectorAll('.action-menu-dropdown.show').forEach(otherDropdown => {
                     if (otherDropdown !== dropdown) {
                         otherDropdown.classList.remove('show');
+                        const otherParentCard = otherDropdown.closest('.topic-card, .flashcard-item, .course-item-card');
+                        if (otherParentCard) {
+                            otherParentCard.classList.remove('has-open-menu');
+                        }
                     }
                 });
-                
+
                 // Toggle current dropdown
-                dropdown.classList.toggle('show');
+                if (!wasOpen) { // If it wasn't open, open it
+                    dropdown.classList.add('show');
+                    if (parentCard) {
+                        parentCard.classList.add('has-open-menu');
+                    }
+                } else { // If it was open, close it (and remove class from parent)
+                    dropdown.classList.remove('show');
+                    if (parentCard) {
+                        parentCard.classList.remove('has-open-menu');
+                    }
+                }
             }
         });
     }
@@ -238,8 +262,15 @@ class UIManager {
                 if (handler) {
                     handler(e);
                 }
-                // Close the dropdown
-                e.target.closest('.action-menu-dropdown').classList.remove('show');
+                // Close the dropdown and remove parent card class
+                const dropdownElement = e.target.closest('.action-menu-dropdown');
+                if (dropdownElement) {
+                    dropdownElement.classList.remove('show');
+                    const parentCard = dropdownElement.closest('.topic-card, .flashcard-item, .course-item-card');
+                    if (parentCard) {
+                        parentCard.classList.remove('has-open-menu');
+                    }
+                }
             });
         });
     }

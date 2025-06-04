@@ -219,7 +219,7 @@ p {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     padding: var(--spacing-4);
-    min-width: 200px;
+    min-width: 220px;
     z-index: 1000;
     transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
@@ -273,6 +273,8 @@ p {
     display: flex;
     align-items: center;
     gap: var(--spacing-2);
+    white-space: nowrap;
+    text-align: left;
 }
 
 .dropdown-item:hover {
@@ -287,7 +289,7 @@ p {
 .content-container {
     display: flex;
     flex: 1;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* Sidebar */
@@ -362,6 +364,7 @@ p {
     flex: 1;
     padding: var(--spacing-5);
     overflow-y: auto;
+    overflow-x: visible;
     position: relative;
 }
 
@@ -420,6 +423,7 @@ p {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: var(--spacing-4);
+    overflow: visible;
 }
 
 .topic-card {
@@ -430,7 +434,7 @@ p {
     cursor: pointer;
     transition: transform var(--transition-normal), box-shadow var(--transition-normal);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .topic-card::before {
@@ -490,6 +494,7 @@ p {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-3);
+    overflow: visible;
 }
 
 .flashcard-item {
@@ -498,6 +503,7 @@ p {
     border: 1px solid var(--border-color);
     padding: var(--spacing-4);
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    overflow: visible;
 }
 
 .flashcard-item:hover {
@@ -986,12 +992,12 @@ button {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
+    padding: var(--spacing-1) 0;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-8px);
-    transition: all var(--transition-fast);
-    z-index: 1000;
-    padding: var(--spacing-1) 0;
+    transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+    z-index: 99999 !important;
 }
 
 .action-menu-dropdown.show {
@@ -1131,14 +1137,29 @@ button {
 .course-item-card .action-menu,
 .flashcard-item .action-menu {
     z-index: 10;
+    position: relative;
 }
 
-/* Ensure dropdown doesn't get cut off */
-.topic-card,
-.course-item-card,
-.flashcard-item {
+/* Make topic card action menus appear on topmost layer */
+.topic-card .action-menu {
+    z-index: 9999;
     position: relative;
-    overflow: visible;
+}
+
+.topic-card .action-menu-dropdown {
+    z-index: 99999 !important;
+    position: absolute;
+}
+
+/* Make flashcard action menus appear on topmost layer */
+.flashcard-item .action-menu {
+    z-index: 9999;
+    position: relative;
+}
+
+.flashcard-item .action-menu-dropdown {
+    z-index: 99999 !important;
+    position: absolute;
 }
 
 /* Action menu positioning adjustments */
@@ -1220,5 +1241,284 @@ button {
 }
 
 .view-header h2 {
-    margin-bottom: 0;
+    margin: 0;
+    font-weight: 600;
+}
+
+/* Account Management Styles */
+.delete-account-warning {
+    padding: var(--spacing-4);
+    margin-bottom: var(--spacing-4);
+    border: 2px solid var(--error-500);
+    border-radius: var(--radius-lg);
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.delete-account-warning .warning-icon {
+    text-align: center;
+    margin-bottom: var(--spacing-3);
+}
+
+.delete-account-warning .warning-icon i {
+    font-size: 3rem;
+    color: var(--error-500);
+}
+
+.delete-account-warning h4 {
+    text-align: center;
+    color: var(--error-500);
+    margin-bottom: var(--spacing-3);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.delete-account-warning p {
+    margin-bottom: var(--spacing-2);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.delete-account-warning ul {
+    margin: var(--spacing-2) 0;
+    padding-left: var(--spacing-4);
+    color: var(--text-primary);
+}
+
+.delete-account-warning li {
+    margin-bottom: var(--spacing-1);
+}
+
+/* Enhanced dropdown danger styling */
+.dropdown-item.danger {
+    color: var(--error-500);
+}
+
+.dropdown-item.danger:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--error-500);
+}
+
+/* Enhanced modal content for account management */
+#edit-profile-modal .modal-content,
+#change-password-modal .modal-content,
+#delete-account-modal .modal-content {
+    max-width: 500px;
+    width: 90vw;
+}
+
+#edit-profile-form .form-group {
+    margin-bottom: var(--spacing-4);
+}
+
+#change-password-form .form-group {
+    margin-bottom: var(--spacing-4);
+}
+
+#delete-account-form .form-group {
+    margin-bottom: var(--spacing-3);
+}
+
+/* Password strength indicator */
+.password-requirements {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: var(--spacing-1);
+    padding: var(--spacing-2);
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--warning-500);
+}
+
+.password-requirements.visible {
+    display: block;
+}
+
+.password-requirements.hidden {
+    display: none;
+}
+
+/* Account management responsive adjustments */
+@media (max-width: 600px) {
+    #edit-profile-modal .modal-content,
+    #change-password-modal .modal-content,
+    #delete-account-modal .modal-content {
+        max-width: 95vw;
+        margin: var(--spacing-4);
+    }
+    
+    .delete-account-warning {
+        padding: var(--spacing-3);
+    }
+    
+    .delete-account-warning .warning-icon i {
+        font-size: 2.5rem;
+    }
+}
+
+/* Password input with toggle styles */
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-container input {
+    width: 100%;
+    padding-right: 45px; /* Make room for the toggle button */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 33px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    font-size: 1rem;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition-fast);
+    z-index: 1;
+}
+
+.password-toggle:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+}
+
+.password-toggle:focus {
+    outline: none;
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+}
+
+/* Ensure containers for cards allow children to overflow (for dropdowns) */
+.topics-grid,
+.flashcards-list,
+.courses-list {
+    overflow: visible;
+}
+
+/* Base styling for cards that can contain action menus */
+.topic-card,
+.flashcard-item,
+.course-item-card {
+    position: relative;
+    overflow: visible;
+}
+
+/* Elevate the entire card when its action menu is open */
+.topic-card.has-open-menu,
+.flashcard-item.has-open-menu,
+.course-item-card.has-open-menu {
+    z-index: 20;
+}
+
+/* Action Menu Component Styles */
+.action-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.action-menu-trigger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-2);
+    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+    transition: all var(--transition-fast);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.action-menu-trigger:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.action-menu-trigger:focus {
+    outline: none;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.action-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    min-width: 150px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-1) 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+    z-index: 99999 !important;
+}
+
+.action-menu-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.action-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-3);
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color var(--transition-fast);
+    text-align: left;
+    gap: var(--spacing-2);
+}
+
+.action-menu-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.action-menu-item.danger {
+    color: var(--error-500);
+}
+
+.action-menu-item.danger:hover {
+    background-color: var(--error-50);
+    color: var(--error-600);
+}
+
+.dark-theme .action-menu-item.danger:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--error-400);
+}
+
+.action-menu-item i {
+    width: 16px;
+    text-align: center;
+}
+
+/* General layout containers */
+.main-content {
+    flex: 1;
+    padding: var(--spacing-5);
+    overflow-y: auto;
+    overflow-x: visible;
+    position: relative;
+}
+
+.content-container {
+    display: flex;
+    flex: 1;
+    overflow: visible;
 }
