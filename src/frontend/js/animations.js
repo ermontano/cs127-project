@@ -56,7 +56,7 @@ async function initializeApp() {
         } catch (error) {
             console.error('Database connection failed:', error);
             ui.showNotification('Failed to connect to database. Please check your connection and try refreshing the page.', 'error');
-            ui.showSection('welcome');
+            ui.showSection('dashboard');
         }
         
         // connect search functionality
@@ -114,10 +114,25 @@ function initTheme() {
  */
 function setupSearch() {
     const searchInput = document.getElementById('search-input');
-    if (!searchInput) return;
+    const searchClearBtn = document.getElementById('search-clear');
+    const searchContainer = searchInput?.parentElement;
     
+    if (!searchInput || !searchClearBtn || !searchContainer) return;
+    
+    // Handle search input
     searchInput.addEventListener('input', debounce(async function() {
         const searchTerm = this.value.trim().toLowerCase();
+        console.log('Search input:', searchTerm);
+        
+        // Toggle clear button visibility
+        if (searchTerm.length > 0) {
+            searchContainer.classList.add('has-text');
+            searchClearBtn.classList.remove('hidden');
+        } else {
+            searchContainer.classList.remove('has-text');
+            searchClearBtn.classList.add('hidden');
+        }
+        
         if (searchTerm.length >= 2) {
             try {
                 // Use global managers if available
@@ -125,13 +140,18 @@ function setupSearch() {
                 
                 if (window.coursesManager) {
                     results.courses = await window.coursesManager.searchCourses(searchTerm);
+                    console.log('Course search results:', results.courses);
                 }
                 if (window.topicsManager) {
                     results.topics = await window.topicsManager.searchTopics(searchTerm);
+                    console.log('Topic search results:', results.topics);
                 }
                 if (window.flashcardsManager) {
                     results.flashcards = await window.flashcardsManager.searchFlashcards(searchTerm);
+                    console.log('Flashcard search results:', results.flashcards);
                 }
+                
+                console.log('All search results:', results);
                 
                 // highlight search results in the ui
                 highlightSearchResults(results, searchTerm);
@@ -143,6 +163,15 @@ function setupSearch() {
             clearSearchHighlighting();
         }
     }, 300));
+    
+    // Handle clear button click
+    searchClearBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        searchContainer.classList.remove('has-text');
+        searchClearBtn.classList.add('hidden');
+        clearSearchHighlighting();
+        searchInput.focus(); // Keep focus on input after clearing
+    });
 }
 
 /**
@@ -151,31 +180,52 @@ function setupSearch() {
 function highlightSearchResults(results, searchTerm) {
     clearSearchHighlighting();
     
-    // highlight courses
-    results.courses.forEach(course => {
-        const courseElement = document.querySelector(`.course-item[data-id="${course.id}"]`);
+    // highlight courses (check both sidebar and management view selectors)
+    results.courses?.forEach(course => {
+        // Try sidebar view first (.course-item)
+        let courseElement = document.querySelector(`.course-item[data-id="${course.id}"]`);
+        let titleSelector = '.course-item-title';
+        
+        // If not found, try management view (.course-item-card)
+        if (!courseElement) {
+            courseElement = document.querySelector(`.course-item-card[data-id="${course.id}"]`);
+            titleSelector = '.course-item-title'; // Same title selector for both views
+        }
+        
         if (courseElement) {
             courseElement.classList.add('search-result');
-            highlightText(courseElement.querySelector('.course-item-title'), searchTerm);
+            const titleElement = courseElement.querySelector(titleSelector);
+            if (titleElement) {
+                highlightText(titleElement, searchTerm);
+            }
         }
     });
     
     // highlight topics
-    results.topics.forEach(topic => {
+    results.topics?.forEach(topic => {
         const topicElement = document.querySelector(`.topic-card[data-id="${topic.id}"]`);
         if (topicElement) {
             topicElement.classList.add('search-result');
-            highlightText(topicElement.querySelector('.topic-card-title'), searchTerm);
+            const titleElement = topicElement.querySelector('.topic-card-title');
+            if (titleElement) {
+                highlightText(titleElement, searchTerm);
+            }
         }
     });
     
     // highlight flashcards
-    results.flashcards.forEach(flashcard => {
+    results.flashcards?.forEach(flashcard => {
         const flashcardElement = document.querySelector(`.flashcard-item[data-id="${flashcard.id}"]`);
         if (flashcardElement) {
             flashcardElement.classList.add('search-result');
-            highlightText(flashcardElement.querySelector('.flashcard-question'), searchTerm);
-            highlightText(flashcardElement.querySelector('.flashcard-answer'), searchTerm);
+            const questionElement = flashcardElement.querySelector('.flashcard-question');
+            const answerElement = flashcardElement.querySelector('.flashcard-answer');
+            if (questionElement) {
+                highlightText(questionElement, searchTerm);
+            }
+            if (answerElement) {
+                highlightText(answerElement, searchTerm);
+            }
         }
     });
 }

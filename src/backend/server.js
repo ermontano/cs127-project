@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth');
 const courseRoutes = require('./routes/courses');
 const topicRoutes = require('./routes/topics');
 const flashcardRoutes = require('./routes/flashcards');
+const scheduleRoutes = require('./routes/schedules');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -81,6 +82,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/topics', topicRoutes);
 app.use('/api/flashcards', flashcardRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // Serve main app (protected route)
 app.get('/', (req, res) => {

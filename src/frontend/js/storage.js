@@ -57,7 +57,8 @@ class StorageManager {
                     method: 'PUT',
                     body: JSON.stringify({
                         title: course.title,
-                        description: course.description
+                        description: course.description,
+                        color: course.color
                     })
                 });
             } catch (error) {
@@ -72,7 +73,8 @@ class StorageManager {
                     method: 'POST',
                     body: JSON.stringify({
                         title: course.title,
-                        description: course.description
+                        description: course.description,
+                        color: course.color
                     })
                 });
             } catch (error) {

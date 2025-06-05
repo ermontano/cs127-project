@@ -10,8 +10,6 @@ class Flashcard {
         this.user_id = data.user_id;
         this.question = data.question;
         this.answer = data.answer;
-        this.last_reviewed = data.last_reviewed;
-        this.review_count = data.review_count || 0;
         this.created_at = data.created_at;
         this.updated_at = data.updated_at;
     }
@@ -94,7 +92,7 @@ class Flashcard {
                 FROM flashcards f
                 JOIN topics t ON f.topic_id = t.id
                 WHERE f.topic_id = $1 AND f.user_id = $2
-                ORDER BY f.last_reviewed ASC NULLS FIRST, f.review_count ASC
+                ORDER BY f.created_at ASC
             `, [topicId, userId]);
             
             return result.rows.map(row => ({
@@ -133,15 +131,13 @@ class Flashcard {
     }
 
     /**
-     * Mark flashcard as reviewed
+     * Mark flashcard as reviewed (deprecated - kept for compatibility)
      */
     async markReviewed() {
         try {
             const result = await pool.query(
                 `UPDATE flashcards 
-                 SET last_reviewed = CURRENT_TIMESTAMP, 
-                     review_count = review_count + 1,
-                     updated_at = CURRENT_TIMESTAMP
+                 SET updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 AND user_id = $2 
                  RETURNING *`,
                 [this.id, this.user_id]
@@ -181,19 +177,13 @@ class Flashcard {
         try {
             const result = await pool.query(`
                 SELECT 
-                    COUNT(*) as total_flashcards,
-                    SUM(review_count) as total_reviews,
-                    COUNT(CASE WHEN last_reviewed IS NOT NULL THEN 1 END) as reviewed_cards,
-                    AVG(review_count) as avg_reviews_per_card
+                    COUNT(*) as total_flashcards
                 FROM flashcards 
                 WHERE user_id = $1
             `, [userId]);
             
             return {
-                total_flashcards: parseInt(result.rows[0].total_flashcards),
-                total_reviews: parseInt(result.rows[0].total_reviews) || 0,
-                reviewed_cards: parseInt(result.rows[0].reviewed_cards),
-                avg_reviews_per_card: parseFloat(result.rows[0].avg_reviews_per_card) || 0
+                total_flashcards: parseInt(result.rows[0].total_flashcards)
             };
         } catch (error) {
             throw error;
@@ -210,8 +200,6 @@ class Flashcard {
             user_id: this.user_id,
             question: this.question,
             answer: this.answer,
-            last_reviewed: this.last_reviewed,
-            review_count: this.review_count,
             created_at: this.created_at,
             updated_at: this.updated_at
         };

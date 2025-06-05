@@ -124,8 +124,7 @@ class User {
                 SELECT 
                     COUNT(DISTINCT c.id) as course_count,
                     COUNT(DISTINCT t.id) as topic_count,
-                    COUNT(DISTINCT f.id) as flashcard_count,
-                    COALESCE(SUM(f.review_count), 0) as total_reviews
+                    COUNT(DISTINCT f.id) as flashcard_count
                 FROM users u
                 LEFT JOIN courses c ON u.id = c.user_id
                 LEFT JOIN topics t ON u.id = t.user_id
@@ -138,16 +137,14 @@ class User {
                 return {
                     course_count: 0,
                     topic_count: 0,
-                    flashcard_count: 0,
-                    total_reviews: 0
+                    flashcard_count: 0
                 };
             }
             
             return {
                 course_count: parseInt(result.rows[0].course_count),
                 topic_count: parseInt(result.rows[0].topic_count),
-                flashcard_count: parseInt(result.rows[0].flashcard_count),
-                total_reviews: parseInt(result.rows[0].total_reviews)
+                flashcard_count: parseInt(result.rows[0].flashcard_count)
             };
         } catch (error) {
             throw error;

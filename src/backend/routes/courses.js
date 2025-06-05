@@ -83,7 +83,7 @@ router.get('/:id/details', async (req, res) => {
 // POST /api/courses - Create a new course
 router.post('/', async (req, res) => {
     try {
-        const { title, description } = req.body;
+        const { title, description, color } = req.body;
         const userId = req.session.userId;
         
         if (!title) {
@@ -105,7 +105,8 @@ router.post('/', async (req, res) => {
         const courseData = {
             user_id: userId,
             title,
-            description: description || ''
+            description: description || '',
+            color: color || '#3b82f6'
         };
 
         const course = await Course.create(courseData);
@@ -128,7 +129,7 @@ router.post('/', async (req, res) => {
 // PUT /api/courses/:id - Update a course
 router.put('/:id', async (req, res) => {
     try {
-        const { title, description } = req.body;
+        const { title, description, color } = req.body;
         const userId = req.session.userId;
         
         if (!title) {
@@ -157,7 +158,8 @@ router.put('/:id', async (req, res) => {
 
         const updatedCourse = await course.update({
             title,
-            description: description || ''
+            description: description || '',
+            color: color
         });
         
         res.json({
@@ -206,6 +208,57 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete course',
+            error: error.message
+        });
+    }
+});
+
+// PUT /api/courses/:id/color - Update course color (only if course has schedules)
+router.put('/:id/color', async (req, res) => {
+    try {
+        const { color } = req.body;
+        const userId = req.session.userId;
+        
+        if (!color) {
+            return res.status(400).json({
+                success: false,
+                message: 'Color is required'
+            });
+        }
+
+        const course = await Course.findByIdAndUserId(req.params.id, userId);
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        // Check if course has schedules
+        const hasSchedules = await course.hasSchedules();
+        if (!hasSchedules) {
+            return res.status(400).json({
+                success: false,
+                message: 'Color can only be set for courses with schedules'
+            });
+        }
+
+        const updatedCourse = await course.update({
+            title: course.title,
+            description: course.description,
+            color: color
+        });
+        
+        res.json({
+            success: true,
+            data: updatedCourse.toJSON(),
+            message: 'Course color updated successfully'
+        });
+    } catch (error) {
+        console.error('Error updating course color:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update course color',
             error: error.message
         });
     }

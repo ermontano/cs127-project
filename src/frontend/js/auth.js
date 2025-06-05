@@ -165,40 +165,15 @@ class AuthManager {
         if (!window.uiManager) return;
 
         try {
-            // Check if user has any content
-            let hasContent = false;
-            
-            if (this.stats && (this.stats.topic_count > 0 || this.stats.course_count > 0)) {
-                hasContent = true;
-            } else {
-                // If stats don't show content, double-check by directly querying
-                if (window.storageManager) {
-                    const [courses, topics] = await Promise.all([
-                        window.storageManager.getCourses().catch(() => []),
-                        window.storageManager.getAllTopics().catch(() => [])
-                    ]);
-                    
-                    if (courses.length > 0 || topics.length > 0) {
-                        hasContent = true;
-                        // Update stats since they might be outdated
-                        await this.refreshStats();
-                    }
-                }
-            }
-
-            if (hasContent) {
-                console.log('User has content, showing topics overview');
-                window.uiManager.showTopicsOverview();
-            } else {
-                console.log('User has no content, showing welcome screen');
-                this.updateWelcomeScreenContent();
-                window.uiManager.showWelcomeScreen();
-            }
+            // Always show dashboard on page load/refresh
+            console.log('Showing dashboard on page load');
+            this.updateDashboardContent();
+            window.uiManager.showDashboard();
         } catch (error) {
             console.error('Error determining initial view:', error);
-            // Fallback to welcome screen
-            this.updateWelcomeScreenContent();
-            window.uiManager.showWelcomeScreen();
+            // Fallback to dashboard
+            this.updateDashboardContent();
+            window.uiManager.showDashboard();
         }
     }
 
@@ -210,29 +185,28 @@ class AuthManager {
         }
     }
 
-    // Renamed from updateWelcomeScreen to updateWelcomeScreenContent to avoid confusion
-    updateWelcomeScreenContent() {
-        const welcomeTitle = document.getElementById('welcome-title');
-        const welcomeSubtitle = document.getElementById('welcome-subtitle');
+    // Renamed from updateWelcomeScreen to updateDashboardContent to match new dashboard system
+    updateDashboardContent() {
+        const dashboardTitle = document.getElementById('dashboard-title');
+        const dashboardSubtitle = document.getElementById('dashboard-subtitle');
         
         // The HTML provides default titles. We can personalize them here if user is logged in.
-        if (welcomeTitle && this.user) {
-            // Prepend to existing generic title, or replace. For now, let's prepend.
-            // welcomeTitle.textContent = `Hello, ${this.user.username}! Organize Your Knowledge`; 
-            // Or, if there's a dedicated spot for username:
-            // const userSpecificGreeting = document.getElementById('user-specific-greeting-on-welcome');
-            // if(userSpecificGreeting) userSpecificGreeting.textContent = `Welcome back, ${this.user.username}!`;
-            // For now, let's keep the generic titles from HTML if they are better suited for the new design
-            // and only update if there are specific dynamic parts needed from auth.js
+        if (dashboardTitle && this.user) {
+            // The dashboard title is now handled by the UI manager's updateDashboard method
+            // which dynamically sets welcome messages based on user status
+            // We don't need to override it here as the new system is more comprehensive
         }
         
         // The subtitle in HTML is generic. We can update it if there are no items.
-        if (welcomeSubtitle && this.stats) {
+        if (dashboardSubtitle && this.stats) {
+            // The dashboard subtitle is now handled by the UI manager's updateDashboard method
+            // which provides better new user vs returning user experience
+            // This fallback is kept for compatibility but shouldn't normally be needed
             if (this.stats.topic_count === 0 && this.stats.course_count === 0 && this.stats.flashcard_count === 0) {
-                welcomeSubtitle.textContent = 'Ready to create your first topic or course and start learning?';
+                dashboardSubtitle.textContent = 'Ready to start your learning journey? Create your first topic or course below.';
             } else {
-                // If user has content, they won't see the welcome screen typically, but this is a fallback.
-                welcomeSubtitle.textContent = 'Continue your learning journey by exploring your topics and courses.';
+                // If user has content, they won't see the dashboard typically, but this is a fallback.
+                dashboardSubtitle.textContent = 'Ready to continue your learning adventure?';
             }
         }
     }
@@ -298,12 +272,12 @@ class AuthManager {
                 // For example, if on welcome screen and stats now show items, switch to topics overview
                 if (window.uiManager) {
                     const currentView = window.uiManager.getCurrentView(); // Assumes uiManager has such a method
-                    if (currentView === 'welcome' && (this.stats.topic_count > 0 || this.stats.course_count > 0)) {
+                    if (currentView === 'dashboard' && (this.stats.topic_count > 0 || this.stats.course_count > 0)) {
                         window.uiManager.showTopicsOverview();
-                    } else if (currentView === 'welcome') {
-                         this.updateWelcomeScreenContent(); // Refresh welcome screen text if still on it
+                    } else if (currentView === 'dashboard') {
+                         this.updateDashboardContent(); // Refresh dashboard text if still on it
                     }
-                    // If on topics overview and all topics/courses are deleted, potentially switch to welcome screen
+                    // If on topics overview and all topics/courses are deleted, potentially switch to dashboard
                     // This needs careful handling to avoid unexpected view changes.
                 }
             }
@@ -354,7 +328,9 @@ class AuthManager {
             cancelDeleteAccountBtn.addEventListener('click', () => this.closeModal('delete-account-modal'));
         }
 
-        // Close modals when clicking backdrop - only for delete account modal
+        // Disabled backdrop click for delete account modal for consistency
+        // Users can only close modal using the X button or Cancel button
+        /*
         const deleteAccountModal = document.getElementById('delete-account-modal');
 
         if (deleteAccountModal) {
@@ -364,6 +340,7 @@ class AuthManager {
                 }
             });
         }
+        */
     }
 
     openEditProfileModal() {
@@ -397,6 +374,9 @@ class AuthManager {
         newPasswordInput.value = '';
         confirmNewPasswordInput.value = '';
         passwordRequirements.classList.add('hidden');
+        
+        // Clear any previous errors
+        this.hideFormError('change-password-form');
 
         // Show password requirements when user starts typing
         newPasswordInput.addEventListener('input', () => {
@@ -430,6 +410,9 @@ class AuthManager {
         // Clear form
         passwordInput.value = '';
         confirmationInput.value = '';
+        
+        // Clear any previous errors
+        this.hideFormError('delete-account-form');
 
         // Show modal
         modal.classList.add('show');
@@ -502,19 +485,22 @@ class AuthManager {
         const newPassword = document.getElementById('new-password-change').value;
         const confirmNewPassword = document.getElementById('confirm-new-password-change').value;
 
+        // Clear any previous errors
+        this.hideFormError('change-password-form');
+
         // Validate inputs
         if (!currentPassword || !newPassword || !confirmNewPassword) {
-            this.showNotification('Please fill in all password fields', 'error');
+            this.showFormError('change-password-form', 'Please fill in all password fields');
             return;
         }
 
         if (newPassword !== confirmNewPassword) {
-            this.showNotification('New passwords do not match', 'error');
+            this.showFormError('change-password-form', 'New passwords do not match');
             return;
         }
 
         if (newPassword.length < 6) {
-            this.showNotification('New password must be at least 6 characters long', 'error');
+            this.showFormError('change-password-form', 'New password must be at least 6 characters long');
             return;
         }
 
@@ -534,11 +520,11 @@ class AuthManager {
                 this.closeModal('change-password-modal');
                 this.showNotification('Password changed successfully!', 'success');
             } else {
-                this.showNotification(result.message || 'Failed to change password', 'error');
+                this.showFormError('change-password-form', result.message || 'Failed to change password');
             }
         } catch (error) {
             console.error('Password change error:', error);
-            this.showNotification('Network error occurred', 'error');
+            this.showFormError('change-password-form', 'Network error occurred');
         }
     }
 
@@ -548,14 +534,17 @@ class AuthManager {
         const password = document.getElementById('delete-password').value;
         const confirmation = document.getElementById('delete-confirmation').value;
 
+        // Clear any previous errors
+        this.hideFormError('delete-account-form');
+
         // Validate inputs
         if (!password) {
-            this.showNotification('Please enter your password', 'error');
+            this.showFormError('delete-account-form', 'Please enter your password');
             return;
         }
 
         if (confirmation !== 'DELETE') {
-            this.showNotification('Please type "DELETE" to confirm', 'error');
+            this.showFormError('delete-account-form', 'Please type "DELETE" to confirm');
             return;
         }
 
@@ -569,16 +558,17 @@ class AuthManager {
             const result = await response.json();
 
             if (result.success) {
+                this.closeModal('delete-account-modal');
                 this.showNotification('Account deleted successfully', 'success');
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 2000);
             } else {
-                this.showNotification(result.message || 'Failed to delete account', 'error');
+                this.showFormError('delete-account-form', result.message || 'Failed to delete account');
             }
         } catch (error) {
             console.error('Account deletion error:', error);
-            this.showNotification('Network error occurred', 'error');
+            this.showFormError('delete-account-form', 'Network error occurred');
         }
     }
 
@@ -589,6 +579,35 @@ class AuthManager {
         } else {
             // Fallback: simple alert
             alert(message);
+        }
+    }
+
+    showFormError(formId, message) {
+        // Use the existing form error system from UIManager if available
+        if (window.uiManager && window.uiManager.showFormError) {
+            window.uiManager.showFormError(formId, message);
+        } else {
+            // Fallback: show error in the form's error container
+            const errorElement = document.getElementById(`${formId}-error`);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.classList.remove('hidden');
+            } else {
+                alert(message);
+            }
+        }
+    }
+
+    hideFormError(formId) {
+        // Use the existing form error system from UIManager if available
+        if (window.uiManager && window.uiManager.hideFormError) {
+            window.uiManager.hideFormError(formId);
+        } else {
+            // Fallback: hide error in the form's error container
+            const errorElement = document.getElementById(`${formId}-error`);
+            if (errorElement) {
+                errorElement.classList.add('hidden');
+            }
         }
     }
 }

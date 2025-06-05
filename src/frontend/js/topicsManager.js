@@ -87,6 +87,20 @@ class TopicsManager {
         this.currentCourseIdForContext = courseId;
     }
 
+    // filter topics by course (called from schedule manager)
+    async filterByCourse(courseId) {
+        try {
+            // Load topics for the specific course
+            await this.loadTopicsForCourse(courseId);
+            
+            // Switch to the topics overview view
+            this.ui.showSection('overview');
+        } catch (error) {
+            console.error('Error filtering topics by course:', error);
+            this.ui.showPageAlert('Failed to load topics for course', 'error');
+        }
+    }
+
     // get a topic by id
     async getTopicById(topicId) {
         try {
@@ -395,33 +409,5 @@ class TopicsManager {
     }
 }
 
-// Initialize TopicsManager and inject dependencies
-// This needs to happen after AuthManager and UIManager are initialized.
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if core managers are ready before initializing app-specific managers
-    // A more robust system might use custom events or promises for readiness.
-    const checkReadyInterval = setInterval(() => {
-        if (window.storageManager && window.uiManager && window.authManager) {
-            clearInterval(checkReadyInterval);
-
-            window.topicsManager = new TopicsManager(window.storageManager, window.uiManager);
-            
-            // Inject dependencies if other managers are also ready
-            if (window.coursesManager) {
-                window.topicsManager.setCoursesManager(window.coursesManager);
-                // If coursesManager also depends on topicsManager, handle potential circular dependency or sequence initialization
-            }
-            if (window.flashcardsManager) {
-                window.topicsManager.setFlashcardsManager(window.flashcardsManager);
-            }
-            window.topicsManager.setAuthManager(window.authManager); // For stat refresh
-
-            // Initial load of topics if user is authenticated and UI is ready for topics overview
-            // This is now primarily handled by AuthManager.updateUI deciding the initial view.
-            // However, if that logic defaults to topicsOverview, this would be the place to call loadAllTopics.
-            // For now, AuthManager.updateUI calling uiManager.showTopicsOverview() will trigger loadAllTopics in ui.js.
-            // If ui.js's showTopicsOverview doesn't call loadAllTopics, then call it here based on initial view.
-            // Current ui.js showSection for 'topics-overview' DOES call loadAllTopics().
-        }
-    }, 100); // Check every 100ms
-});
+// TopicsManager initialization is now handled centrally in index.html
+// to ensure proper dependency injection and avoid race conditions

@@ -3,7 +3,6 @@
 class UIManager {
     constructor() {
         // references to main sections
-        this.welcomeScreen = document.getElementById('welcome-screen');
         this.topicsOverview = document.getElementById('topics-overview');
         this.courseManagementView = document.getElementById('course-management-view');
         this.courseView = document.getElementById('course-view');
@@ -50,7 +49,9 @@ class UIManager {
             });
         });
         
-        // add backdrop click listeners to all modals
+        // Disabled backdrop click listeners to prevent accidental modal closure
+        // Users can only close modals using the X button or Cancel/Save buttons
+        /*
         [this.courseModal, this.topicModal, this.flashcardModal, this.confirmModal].forEach(modal => {
             if (modal) {
                 modal.addEventListener('mousedown', (e) => {
@@ -74,19 +75,32 @@ class UIManager {
                 });
             }
         });
+        */
         
         // Main Navigation
         const navDashboardBtn = document.getElementById('nav-dashboard-btn');
+        const navTopicsBtn = document.getElementById('nav-topics-btn');
         const navManageCoursesBtn = document.getElementById('nav-manage-courses-btn');
+        const navScheduleBtn = document.getElementById('nav-schedule-btn');
 
         if (navDashboardBtn) {
             navDashboardBtn.addEventListener('click', () => {
+                this.showDashboard();
+            });
+        }
+        if (navTopicsBtn) {
+            navTopicsBtn.addEventListener('click', () => {
                 this.showTopicsOverview();
             });
         }
         if (navManageCoursesBtn) {
             navManageCoursesBtn.addEventListener('click', () => {
                 this.showCourseManagementView();
+            });
+        }
+        if (navScheduleBtn) {
+            navScheduleBtn.addEventListener('click', () => {
+                this.showScheduleView();
             });
         }
         
@@ -112,18 +126,25 @@ class UIManager {
             backToManageCoursesBtn.addEventListener('click', () => this.showCourseManagementView());
         }
         
-        // Welcome screen buttons
-        const welcomeCreateTopicBtn = document.getElementById('welcome-create-topic');
-        if (welcomeCreateTopicBtn) {
-            welcomeCreateTopicBtn.addEventListener('click', () => {
+        // Dashboard screen buttons
+        const dashboardCreateTopicBtn = document.getElementById('dashboard-create-topic');
+        if (dashboardCreateTopicBtn) {
+            dashboardCreateTopicBtn.addEventListener('click', () => {
                 this.openModal('topic');
             });
         }
 
-        const welcomeCreateCourseBtn = document.getElementById('welcome-create-course');
-        if (welcomeCreateCourseBtn) {
-            welcomeCreateCourseBtn.addEventListener('click', () => {
+        const dashboardCreateCourseBtn = document.getElementById('dashboard-create-course');
+        if (dashboardCreateCourseBtn) {
+            dashboardCreateCourseBtn.addEventListener('click', () => {
                 this.openModal('course');
+            });
+        }
+        
+        const dashboardViewScheduleBtn = document.getElementById('dashboard-view-schedule');
+        if (dashboardViewScheduleBtn) {
+            dashboardViewScheduleBtn.addEventListener('click', () => {
+                this.showScheduleView();
             });
         }
         
@@ -276,36 +297,58 @@ class UIManager {
     }
 
     // show a specific section and hide others
-    // @param {string} section - the section to show ('welcome', 'topics-overview', 'course-management', 'course', 'topic', or 'study')
+    // @param {string} section - the section to show ('dashboard', 'topics-overview', 'course-management', 'course', 'topic', or 'study')
     showSection(sectionName, data = null) {
         // hide all sections
-        this.welcomeScreen.classList.add('hidden');
+        const dashboardView = document.getElementById('dashboard-view');
+        if (dashboardView) dashboardView.classList.add('hidden');
         this.topicsOverview.classList.add('hidden');
         this.courseManagementView.classList.add('hidden');
         this.courseView.classList.add('hidden');
         this.topicView.classList.add('hidden');
         this.studyMode.classList.add('hidden');
         
+        // Hide schedule view
+        const scheduleView = document.getElementById('schedule-view');
+        if (scheduleView) scheduleView.classList.add('hidden');
+        
+        // Manage main content overflow for course management view
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.classList.remove('course-management-active');
+        }
+        
         const navDashboardBtn = document.getElementById('nav-dashboard-btn');
+        const navTopicsBtn = document.getElementById('nav-topics-btn');
         const navManageCoursesBtn = document.getElementById('nav-manage-courses-btn');
+        const navScheduleBtn = document.getElementById('nav-schedule-btn');
 
         // Reset active state for nav links
         if (navDashboardBtn) navDashboardBtn.classList.remove('active');
+        if (navTopicsBtn) navTopicsBtn.classList.remove('active');
         if (navManageCoursesBtn) navManageCoursesBtn.classList.remove('active');
+        if (navScheduleBtn) navScheduleBtn.classList.remove('active');
         
         // show the requested section and update nav active state
         switch (sectionName) {
-            case 'welcome':
-                this.welcomeScreen.classList.remove('hidden');
-                if (navDashboardBtn) navDashboardBtn.classList.add('active'); // Default to dashboard active
+            case 'dashboard':
+                const dashboardViewElement = document.getElementById('dashboard-view');
+                if (dashboardViewElement) dashboardViewElement.classList.remove('hidden');
+                if (navDashboardBtn) navDashboardBtn.classList.add('active');
                 break;
             case 'topics-overview':
+            case 'overview':
                 this.topicsOverview.classList.remove('hidden');
-                if (window.topicsManager) window.topicsManager.loadAllTopics();
-                if (navDashboardBtn) navDashboardBtn.classList.add('active');
+                if (window.topicsManager && typeof window.topicsManager.loadAllTopics === 'function') {
+                    window.topicsManager.loadAllTopics().catch(error => {
+                        console.error('Error loading topics:', error);
+                    });
+                }
+                if (navTopicsBtn) navTopicsBtn.classList.add('active');
                 break;
             case 'course-management':
                 this.courseManagementView.classList.remove('hidden');
+                if (mainContent) mainContent.classList.add('course-management-active');
                 if (window.coursesManager) window.coursesManager.loadAllCoursesForManagement();
                 if (navManageCoursesBtn) navManageCoursesBtn.classList.add('active');
                 break;
@@ -320,7 +363,7 @@ class UIManager {
                 if (data && data.courseId) {
                     if (navManageCoursesBtn) navManageCoursesBtn.classList.add('active');
                 } else {
-                    if (navDashboardBtn) navDashboardBtn.classList.add('active');
+                    if (navTopicsBtn) navTopicsBtn.classList.add('active');
                 }
                 break;
             case 'study':
@@ -329,16 +372,85 @@ class UIManager {
                 // (e.g., if entered from topic in a course, keep course nav active)
                 // This might need more sophisticated context tracking if direct nav to study mode is possible.
                 break;
+            case 'schedule':
+                const scheduleView = document.getElementById('schedule-view');
+                if (scheduleView) scheduleView.classList.remove('hidden');
+                if (navScheduleBtn) navScheduleBtn.classList.add('active');
+                break;
             default:
-                this.welcomeScreen.classList.remove('hidden');
+                const defaultDashboardView = document.getElementById('dashboard-view');
+                if (defaultDashboardView) defaultDashboardView.classList.remove('hidden');
                 if (navDashboardBtn) navDashboardBtn.classList.add('active');
                 break;
         }
     }
 
     // --- View-specific show methods ---
-    showWelcomeScreen() {
-        this.showSection('welcome');
+    showDashboard() {
+        this.showSection('dashboard');
+        this.updateDashboard();
+    }
+    
+    async updateDashboard() {
+        try {
+            // Get user stats
+            const topics = await window.storageManager.getAllTopics();
+            const courses = await window.storageManager.getCourses();
+            
+            // Calculate total flashcards
+            let totalFlashcards = 0;
+            if (window.topicsManager) {
+                for (const topic of topics) {
+                    const count = await window.topicsManager.getFlashcardCountForTopic(topic.id);
+                    totalFlashcards += count || 0;
+                }
+            }
+            
+            // Determine if user is new or returning
+            const isNewUser = topics.length === 0 && courses.length === 0;
+            
+            // Update welcome message
+            const titleElement = document.getElementById('dashboard-title');
+            const subtitleElement = document.getElementById('dashboard-subtitle');
+            
+            if (titleElement && subtitleElement) {
+                const user = window.authManager ? window.authManager.getUser() : null;
+                const userName = user ? user.username : '';
+                
+                if (isNewUser) {
+                    titleElement.textContent = userName ? `Welcome, ${userName}!` : 'Welcome to MemoFlash!';
+                    subtitleElement.textContent = 'Ready to start your learning journey? Create your first topic or course below.';
+                } else {
+                    titleElement.textContent = userName ? `Welcome back, ${userName}!` : 'Welcome back!';
+                    subtitleElement.textContent = 'Ready to continue your learning adventure?';
+                }
+            }
+            
+            // Update stats
+            const statsContainer = document.getElementById('dashboard-stats');
+            if (statsContainer) {
+                if (isNewUser) {
+                    statsContainer.innerHTML = '';
+                } else {
+                    statsContainer.innerHTML = `
+                        <div class="dashboard-stat-card">
+                            <div class="dashboard-stat-number">${topics.length}</div>
+                            <div class="dashboard-stat-label">Topics</div>
+                        </div>
+                        <div class="dashboard-stat-card">
+                            <div class="dashboard-stat-number">${courses.length}</div>
+                            <div class="dashboard-stat-label">Courses</div>
+                        </div>
+                        <div class="dashboard-stat-card">
+                            <div class="dashboard-stat-number">${totalFlashcards}</div>
+                            <div class="dashboard-stat-label">Flashcards</div>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Error updating dashboard:', error);
+        }
     }
 
     showTopicsOverview() {
@@ -351,6 +463,14 @@ class UIManager {
 
     showCourseManagementView() {
         this.showSection('course-management');
+    }
+
+    showScheduleView() {
+        this.showSection('schedule');
+        // Load schedule data when the view is shown
+        if (window.scheduleManager) {
+            window.scheduleManager.loadScheduleView();
+        }
     }
 
     showCourseView(courseId) {
@@ -385,12 +505,15 @@ class UIManager {
     }
 
     getCurrentView() {
-        if (!this.welcomeScreen.classList.contains('hidden')) return 'welcome';
+        const dashboardView = document.getElementById('dashboard-view');
+        if (dashboardView && !dashboardView.classList.contains('hidden')) return 'dashboard';
         if (!this.topicsOverview.classList.contains('hidden')) return 'topics-overview';
         if (!this.courseManagementView.classList.contains('hidden')) return 'course-management';
         if (!this.courseView.classList.contains('hidden')) return 'course';
         if (!this.topicView.classList.contains('hidden')) return 'topic';
         if (!this.studyMode.classList.contains('hidden')) return 'study';
+        const scheduleView = document.getElementById('schedule-view');
+        if (scheduleView && !scheduleView.classList.contains('hidden')) return 'schedule';
         return null; // Or a default view name
     }
 
@@ -644,15 +767,49 @@ class UIManager {
                 formElement = document.getElementById('course-form');
                 modalTitle = document.getElementById('course-modal-title');
                 this.hideFormError('course-form'); // Clear any existing error messages
+                
+                // Get entire color picker section
+                const colorPickerSection = document.querySelector('.course-color-picker');
+                
+                // Always hide entire color picker section initially - it will be shown when Add Schedule is clicked
+                if (colorPickerSection) {
+                    colorPickerSection.style.display = 'none';
+                }
+                
                 if (data) {
                     modalTitle.textContent = 'Edit Course';
                     formElement.elements['course-name'].value = data.title || '';
                     formElement.elements['course-desc'].value = data.description || '';
                     formElement.dataset.editingId = data.id;
+                    
+                    // Load existing schedules for this course
+                    if (window.scheduleManager) {
+                        window.scheduleManager.clearScheduleForm();
+                        window.scheduleManager.loadCourseSchedules(data.id);
+                        
+                        // If course has schedules, show color picker section
+                        if (data.hasSchedules && colorPickerSection) {
+                            colorPickerSection.style.display = 'block';
+                            
+                            // Set existing color if available
+                            if (data.color) {
+                                setTimeout(() => {
+                                    window.scheduleManager.setColorPickerSelection(data.color);
+                                }, 150);
+                            }
+                        }
+                    }
                 } else {
                     modalTitle.textContent = 'Add New Course';
                     formElement.reset();
                     delete formElement.dataset.editingId;
+                    
+                    // Clear schedule form for new course and reset color picker
+                    if (window.scheduleManager) {
+                        window.scheduleManager.clearScheduleForm();
+                        // Reset color picker to default for new course
+                        window.scheduleManager.setColorPickerSelection('#3b82f6');
+                    }
                 }
                 break;
             case 'topic':
@@ -677,6 +834,7 @@ class UIManager {
                 break;
             case 'flashcard':
                 modalElement = this.flashcardModal;
+                formElement = document.getElementById('flashcard-form');
                 modalTitle = document.getElementById('flashcard-modal-title');
                 this.hideFormError('flashcard-form'); // Clear any existing error messages
                 if (data) {
@@ -685,12 +843,12 @@ class UIManager {
                     const answerInput = document.getElementById('flashcard-answer');
                     questionInput.value = data.question;
                     answerInput.value = data.answer;
-                    questionInput.setAttribute('data-flashcard-id', data.id);
+                    formElement.dataset.editingId = data.id;
                 } else {
                     modalTitle.textContent = 'Add New Flashcard';
                     document.getElementById('flashcard-question').value = '';
                     document.getElementById('flashcard-answer').value = '';
-                    document.getElementById('flashcard-question').removeAttribute('data-flashcard-id');
+                    delete formElement.dataset.editingId;
                 }
                 break;
         }
@@ -941,10 +1099,10 @@ class UIManager {
     // Helper method to get icon for alert type
     getAlertIcon(type) {
         switch (type) {
-            case 'success': return 'fa-check-circle';
-            case 'error': return 'fa-exclamation-circle';
-            case 'warning': return 'fa-exclamation-triangle';
-            default: return 'fa-info-circle';
+                case 'success': return 'fa-check-circle';
+                case 'error': return 'fa-exclamation-circle';
+                case 'warning': return 'fa-exclamation-triangle';
+                default: return 'fa-info-circle';
         }
     }
 

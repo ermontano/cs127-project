@@ -133,13 +133,50 @@ router.post('/logout', (req, res) => {
 });
 
 // Check authentication status
-router.get('/status', (req, res) => {
-    res.json({
-        success: true,
-        authenticated: !!req.session.userId,
-        userId: req.session.userId || null,
-        username: req.session.username || null
-    });
+router.get('/status', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.json({
+                success: true,
+                authenticated: false,
+                userId: null,
+                username: null
+            });
+        }
+
+        // Verify user still exists in database
+        const user = await User.findById(req.session.userId);
+        
+        if (!user) {
+            // User was deleted, clear session
+            req.session.destroy((err) => {
+                if (err) {
+                    console.error('Session destroy error:', err);
+                }
+            });
+            
+            return res.json({
+                success: true,
+                authenticated: false,
+                userId: null,
+                username: null
+            });
+        }
+
+        res.json({
+            success: true,
+            authenticated: true,
+            userId: req.session.userId,
+            username: req.session.username
+        });
+
+    } catch (error) {
+        console.error('Status check error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to check authentication status'
+        });
+    }
 });
 
 // Get current user info

@@ -366,14 +366,11 @@ class StudyMode {
     // Update navigation button states
     updateNavigationButtons() {
         const prevBtn = document.getElementById('prev-card-btn');
-        const nextBtn = document.getElementById('next-card-btn');
         
         if (prevBtn) {
             prevBtn.disabled = this.currentIndex === 0;
         }
-        if (nextBtn) {
-            nextBtn.disabled = this.currentIndex === this.flashcards.length - 1;
-        }
+        // Remove next button disabling - allow pressing next at last card to show completion
     }
 
     // Exit study mode
@@ -439,8 +436,7 @@ window.studyModeManager = new StudyMode();
 // Add CSS for study mode enhancements
 const studyModeStyle = document.createElement('style');
 studyModeStyle.textContent = `
-    #prev-card-btn:disabled,
-    #next-card-btn:disabled {
+    #prev-card-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
     }
@@ -471,19 +467,6 @@ studyModeStyle.textContent = `
     .study-controls button {
         pointer-events: auto;
         cursor: pointer;
-    }
-
-    /* Remove click-to-flip instructions since card is not clickable */
-    /* Keyboard shortcuts info */
-    .study-header::after {
-        content: 'Shortcuts: Space=Flip, ←→=Navigate, Esc=Exit';
-        position: absolute;
-        bottom: -20px;
-        left: 0;
-        font-size: 0.75rem;
-        color: var(--text-tertiary);
-        opacity: 0.8;
-        pointer-events: none;
     }
 
     .study-header {

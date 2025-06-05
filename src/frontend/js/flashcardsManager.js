@@ -217,22 +217,5 @@ class FlashcardsManager {
     }
 }
 
-// Initialize FlashcardsManager and inject dependencies
-document.addEventListener('DOMContentLoaded', () => {
-    const checkReadyInterval = setInterval(() => {
-        if (window.storageManager && window.uiManager && window.authManager && window.topicsManager) { // All core managers ready
-            clearInterval(checkReadyInterval);
-
-            window.flashcardsManager = new FlashcardsManager(window.storageManager, window.uiManager);
-            window.flashcardsManager.setTopicsManager(window.topicsManager);
-            window.flashcardsManager.setAuthManager(window.authManager);
-
-            // If topicsManager needs flashcardsManager (it does, for loading flashcards within a topic)
-            if (typeof window.topicsManager.setFlashcardsManager === 'function') {
-                window.topicsManager.setFlashcardsManager(window.flashcardsManager);
-            }
-            
-            // Flashcards are loaded when a topic is viewed, no initial global load needed here.
-        }
-    }, 100);
-});
+// FlashcardsManager initialization is now handled centrally in index.html
+// to ensure proper dependency injection and avoid race conditions

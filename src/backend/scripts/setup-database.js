@@ -9,6 +9,7 @@ const createTables = async () => {
 
         // Drop existing tables (in reverse dependency order)
         await pool.query('DROP TABLE IF EXISTS flashcards CASCADE');
+        await pool.query('DROP TABLE IF EXISTS course_schedules CASCADE');
         await pool.query('DROP TABLE IF EXISTS topics CASCADE');
         await pool.query('DROP TABLE IF EXISTS courses CASCADE');
         await pool.query('DROP TABLE IF EXISTS session CASCADE');
@@ -41,7 +42,7 @@ const createTables = async () => {
             ALTER TABLE session ADD CONSTRAINT session_pkey PRIMARY KEY (sid) NOT DEFERRABLE INITIALLY IMMEDIATE
         `);
         await pool.query(`
-            CREATE INDEX IDX_session_expire ON session (expire)
+            CREATE INDEX idx_session_expire ON session (expire)
         `);
         console.log('✅ Session table created');
 
@@ -52,11 +53,27 @@ const createTables = async () => {
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 title VARCHAR(255) NOT NULL,
                 description TEXT,
+                color VARCHAR(7) DEFAULT '#3b82f6' NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
         console.log('✅ Courses table created');
+
+        // Create course_schedules table for course scheduling
+        await pool.query(`
+            CREATE TABLE course_schedules (
+                id SERIAL PRIMARY KEY,
+                course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                day_of_week INTEGER NOT NULL, -- 0=Sunday, 1=Monday, ..., 6=Saturday
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ Course schedules table created');
 
         // Create topics table with optional course_id and user relationship
         await pool.query(`
@@ -81,15 +98,16 @@ const createTables = async () => {
                 question TEXT NOT NULL,
                 answer TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_reviewed TIMESTAMP,
-                review_count INTEGER DEFAULT 0
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
         console.log('✅ Flashcards table created');
 
         // Create indexes for better performance
         await pool.query(`CREATE INDEX idx_courses_user_id ON courses(user_id)`);
+        await pool.query(`CREATE INDEX idx_course_schedules_course_id ON course_schedules(course_id)`);
+        await pool.query(`CREATE INDEX idx_course_schedules_user_id ON course_schedules(user_id)`);
+        await pool.query(`CREATE INDEX idx_course_schedules_day ON course_schedules(day_of_week)`);
         await pool.query(`CREATE INDEX idx_topics_course_id ON topics(course_id)`);
         await pool.query(`CREATE INDEX idx_topics_user_id ON topics(user_id)`);
         await pool.query(`CREATE INDEX idx_flashcards_topic_id ON flashcards(topic_id)`);
@@ -102,6 +120,7 @@ const createTables = async () => {
         console.log('💡 All tables support user authentication and data isolation');
         console.log('🔐 Users can now have their own private courses, topics, and flashcards');
         console.log('📝 Topics can be created with or without courses');
+        console.log('📅 Courses can now have multiple schedules with day/time information');
         
     } catch (error) {
         console.error('❌ Error setting up database:', error);

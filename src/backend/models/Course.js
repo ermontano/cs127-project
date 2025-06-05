@@ -9,6 +9,7 @@ class Course {
         this.user_id = data.user_id;
         this.title = data.title;
         this.description = data.description;
+        this.color = data.color;
         this.created_at = data.created_at;
         this.updated_at = data.updated_at;
     }
@@ -17,14 +18,14 @@ class Course {
      * Create a new course
      */
     static async create(courseData) {
-        const { user_id, title, description } = courseData;
+        const { user_id, title, description, color } = courseData;
         
         try {
             const result = await pool.query(
-                `INSERT INTO courses (user_id, title, description, updated_at) 
-                 VALUES ($1, $2, $3, CURRENT_TIMESTAMP) 
+                `INSERT INTO courses (user_id, title, description, color, updated_at) 
+                 VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) 
                  RETURNING *`,
-                [user_id, title, description]
+                [user_id, title, description, color || '#3b82f6']
             );
             
             return new Course(result.rows[0]);
@@ -50,14 +51,17 @@ class Course {
     }
 
     /**
-     * Find courses by user ID with topic count
+     * Find courses by user ID with topic count and schedule count
      */
     static async findByUserIdWithTopicCount(userId) {
         try {
             const result = await pool.query(`
-                SELECT c.*, COUNT(t.id) as topic_count 
+                SELECT c.*, 
+                       COUNT(DISTINCT t.id) as topic_count,
+                       COUNT(DISTINCT cs.id) as schedule_count
                 FROM courses c
                 LEFT JOIN topics t ON c.id = t.course_id
+                LEFT JOIN course_schedules cs ON c.id = cs.course_id
                 WHERE c.user_id = $1 
                 GROUP BY c.id
                 ORDER BY c.updated_at DESC
@@ -65,7 +69,8 @@ class Course {
             
             return result.rows.map(row => ({
                 ...new Course(row).toJSON(),
-                topicCount: parseInt(row.topic_count)
+                topicCount: parseInt(row.topic_count),
+                hasSchedules: parseInt(row.schedule_count) > 0
             }));
         } catch (error) {
             throw error;
@@ -154,15 +159,15 @@ class Course {
      * Update course
      */
     async update(updateData) {
-        const { title, description } = updateData;
+        const { title, description, color } = updateData;
         
         try {
             const result = await pool.query(
                 `UPDATE courses 
-                 SET title = $1, description = $2, updated_at = CURRENT_TIMESTAMP 
-                 WHERE id = $3 AND user_id = $4 
+                 SET title = $1, description = $2, color = $3, updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = $4 AND user_id = $5 
                  RETURNING *`,
-                [title, description, this.id, this.user_id]
+                [title, description, color || this.color, this.id, this.user_id]
             );
             
             if (result.rows.length === 0) {
@@ -222,6 +227,22 @@ class Course {
     }
 
     /**
+     * Check if course has schedules
+     */
+    async hasSchedules() {
+        try {
+            const result = await pool.query(
+                'SELECT COUNT(*) as schedule_count FROM course_schedules WHERE course_id = $1 AND user_id = $2',
+                [this.id, this.user_id]
+            );
+            
+            return parseInt(result.rows[0].schedule_count) > 0;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
      * Convert to JSON
      */
     toJSON() {
@@ -230,6 +251,7 @@ class Course {
             user_id: this.user_id,
             title: this.title,
             description: this.description,
+            color: this.color,
             created_at: this.created_at,
             updated_at: this.updated_at
         };

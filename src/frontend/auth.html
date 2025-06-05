@@ -217,12 +217,16 @@
         }
 
         .brand-logo {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .brand-logo .logo-image {
+            height: 4rem;
+            width: auto;
+            object-fit: contain;
         }
 
         .brand-subtitle {
@@ -230,13 +234,23 @@
             margin-bottom: 30px;
             font-size: 0.9rem;
         }
+
+        .memo {
+            color: #60a5fa; /* Light blue - matching main page */
+        }
+
+        .flash {
+            color: #333; /* Dark color for contrast */
+        }
     </style>
 </head>
 <body>
     <div class="auth-container">
         <div class="auth-card">
-            <div class="brand-logo">🎓</div>
-            <h1>Flashcards</h1>
+            <div class="brand-logo">
+                <img src="images/logo.png" alt="MemoFlash Logo" class="logo-image">
+            </div>
+                                <h1><span class="memo">memo</span><span class="flash">flash</span></h1>
             <p class="brand-subtitle">Study smarter with personalized flashcards</p>
 
             <div class="auth-tabs">

@@ -96,9 +96,9 @@ class CoursesManager {
                 this.ui.updateCourseTopicsCount(course.id, topicsCount);
             }
             
-            // show welcome screen if no courses
+            // show dashboard screen if no courses
             if (courses.length === 0) {
-                this.ui.showSection('welcome');
+                this.ui.showSection('dashboard');
             } else if (this.currentCourseId) {
                 // if we have a selected course, show it
                 await this.selectCourse(this.currentCourseId);
@@ -109,7 +109,7 @@ class CoursesManager {
         } catch (error) {
             console.error('Error loading courses:', error);
             this.ui.showPageAlert('Failed to load courses', 'error');
-            this.ui.showSection('welcome');
+            this.ui.showSection('dashboard');
         }
     }
 
@@ -201,14 +201,48 @@ class CoursesManager {
             this.ui.showFormError('course-form', 'Course title is required');
             return;
         }
+
+        // Get schedule data from the form
+        const schedules = window.scheduleManager ? window.scheduleManager.getScheduleDataFromForm() : [];
+        
+        // Validate schedules
+        for (const schedule of schedules) {
+            if (schedule.start_time >= schedule.end_time) {
+                this.ui.showFormError('course-form', 'Start time must be before end time for all schedules');
+                return;
+            }
+        }
         
         const courseData = { title, description };
+        
+        // Get selected color (defined outside conditional so it's always available)
+        const selectedColor = window.scheduleManager ? window.scheduleManager.getSelectedCourseColor() : '#3b82f6';
+        
+        // Only include color if schedules exist
+        if (schedules.length > 0) {
+            courseData.color = selectedColor;
+        }
+        
         if (editingId) {
             courseData.id = editingId;
         }
         
         try {
             const savedCourse = await this.storage.saveCourse(courseData);
+            
+            // Always save schedules (this will handle clearing schedules if empty array)
+            if (window.scheduleManager) {
+                const scheduleSaved = await window.scheduleManager.saveSchedules(savedCourse.id, schedules);
+                if (!scheduleSaved) {
+                    console.warn('Course saved but schedules failed to save');
+                }
+                
+                // Set course color only if schedules exist
+                if (schedules.length > 0) {
+                    window.scheduleManager.setCourseColor(savedCourse.title, selectedColor);
+                }
+            }
+            
             this.ui.closeAllModals();
             this.ui.showToast(editingId ? 'Course updated successfully' : 'Course created successfully', 'success');
 
@@ -315,19 +349,5 @@ class CoursesManager {
     }
 }
 
-// Initialize CoursesManager and inject dependencies
-document.addEventListener('DOMContentLoaded', () => {
-    const checkReadyInterval = setInterval(() => {
-        if (window.storageManager && window.uiManager && window.authManager && window.topicsManager) {
-            clearInterval(checkReadyInterval);
-
-            window.coursesManager = new CoursesManager(window.storageManager, window.uiManager);
-            window.coursesManager.setTopicsManager(window.topicsManager);
-            window.coursesManager.setAuthManager(window.authManager);
-
-            if (window.topicsManager && typeof window.topicsManager.setCoursesManager === 'function') {
-                window.topicsManager.setCoursesManager(window.coursesManager);
-            }
-        }
-    }, 100);
-});
+// CoursesManager initialization is now handled centrally in index.html
+// to ensure proper dependency injection and avoid race conditions
