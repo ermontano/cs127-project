@@ -93,6 +93,15 @@ router.post('/', async (req, res) => {
             });
         }
 
+        // Check if course with same title already exists for this user
+        const existingCourse = await Course.findByTitleAndUserId(title, userId);
+        if (existingCourse) {
+            return res.status(409).json({
+                success: false,
+                message: `Course "${title}" already exists`
+            });
+        }
+
         const courseData = {
             user_id: userId,
             title,
@@ -134,6 +143,15 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Course not found'
+            });
+        }
+
+        // Check if another course with same title already exists for this user
+        const existingCourse = await Course.findByTitleAndUserId(title, userId, req.params.id);
+        if (existingCourse) {
+            return res.status(409).json({
+                success: false,
+                message: `Course "${title}" already exists`
             });
         }
 

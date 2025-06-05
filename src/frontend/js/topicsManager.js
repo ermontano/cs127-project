@@ -93,7 +93,7 @@ class TopicsManager {
             return await this.storage.getTopicById(topicId);
         } catch (error) {
             console.error('Error fetching topic by ID:', error);
-            this.ui.showNotification('Failed to fetch topic details', 'error');
+            this.ui.showPageAlert('Failed to fetch topic details', 'error');
             return null;
         }
     }
@@ -103,7 +103,7 @@ class TopicsManager {
         try {
             const topic = await this.getTopicById(topicId);
             if (!topic) {
-                this.ui.showNotification('Topic not found', 'error');
+                this.ui.showPageAlert('Topic not found', 'error');
                 return;
             }
             
@@ -126,7 +126,7 @@ class TopicsManager {
             this.ui.showSection('topic');
         } catch (error) {
             console.error('Error selecting topic:', error);
-            this.ui.showNotification('Failed to load topic', 'error');
+            this.ui.showPageAlert('Failed to load topic', 'error');
         }
     }
 
@@ -139,7 +139,7 @@ class TopicsManager {
                 if (topic) {
                     this.ui.openModal('topic', topic);
                 } else {
-                    this.ui.showNotification('Failed to load topic data', 'error');
+                    this.ui.showPageAlert('Failed to load topic data', 'error');
                 }
             });
         } else {
@@ -157,7 +157,7 @@ class TopicsManager {
             this.ui.openModal('course-assignment', { courses });
         } catch (error) {
             console.error('Error loading courses:', error);
-            this.ui.showNotification('Failed to load courses', 'error');
+            this.ui.showPageAlert('Failed to load courses', 'error');
         }
     }
 
@@ -172,7 +172,7 @@ class TopicsManager {
         if (courseId === '') courseId = null;
 
         if (!title) {
-            this.ui.showNotification('Topic title is required', 'error');
+            this.ui.showFormError('topic-form', 'Topic title is required');
             return;
         }
 
@@ -189,7 +189,7 @@ class TopicsManager {
 
             const savedTopic = await this.storage.saveTopic(topicData); // API: POST or PUT
             this.ui.closeAllModals();
-            this.ui.showNotification(editingId ? 'Topic updated successfully' : 'Topic created successfully', 'success');
+            this.ui.showToast(editingId ? 'Topic updated successfully' : 'Topic created successfully', 'success');
             
             if (this.authManager) {
                 await this.authManager.refreshStats(); // Update stats in user menu and potentially UI
@@ -211,7 +211,7 @@ class TopicsManager {
 
         } catch (error) {
             console.error('Error saving topic:', error);
-            this.ui.showNotification('Failed to save topic. ' + (error.message || ''), 'error');
+            this.ui.showFormError('topic-form', error.message || 'Failed to save topic');
         }
     }
 
@@ -219,7 +219,7 @@ class TopicsManager {
     async assignCourse(topicId, courseId) {
         try {
             await this.storage.assignCourse(topicId, courseId);
-            this.ui.showNotification('Course assigned successfully', 'success');
+            this.ui.showToast('Course assigned successfully', 'success');
             
             // Refresh course view if we have a courses manager
             if (this.coursesManager) {
@@ -230,7 +230,7 @@ class TopicsManager {
             this.ui.closeAllModals();
         } catch (error) {
             console.error('Error assigning course:', error);
-            this.ui.showNotification('Failed to assign course', 'error');
+            this.ui.showPageAlert('Failed to assign course', 'error');
         }
     }
 
@@ -241,7 +241,7 @@ class TopicsManager {
             this.displayUnassignedTopics(topics);
         } catch (error) {
             console.error('Error loading unassigned topics:', error);
-            this.ui.showNotification('Failed to load unassigned topics', 'error');
+            this.ui.showPageAlert('Failed to load unassigned topics', 'error');
         }
     }
 
@@ -280,7 +280,7 @@ class TopicsManager {
 
         try {
             await this.storage.deleteTopic(topicId);
-            this.ui.showNotification('Topic deleted successfully', 'success');
+            this.ui.showToast('Topic deleted successfully', 'success');
             this.currentTopicId = null; // Clear current topic context
             this.currentCourseIdForContext = null;
 
@@ -308,7 +308,7 @@ class TopicsManager {
             }
         } catch (error) {
             console.error('Error deleting topic:', error);
-            this.ui.showNotification('Failed to delete topic. ' + (error.message || ''), 'error');
+            this.ui.showPageAlert('Failed to delete topic. ' + (error.message || ''), 'error');
         }
     }
 
@@ -339,7 +339,7 @@ class TopicsManager {
             this.ui.renderTopicsGrid(topics, 'topics-grid', 'overview'); 
         } catch (error) {
             console.error('Error loading all topics:', error);
-            this.ui.showNotification('Failed to load topics', 'error');
+            this.ui.showPageAlert('Failed to load topics', 'error');
             this.ui.renderTopicsGrid([], 'topics-grid', 'overview'); // Show empty state
         }
     }
@@ -351,7 +351,7 @@ class TopicsManager {
             this.ui.renderTopicsGrid(topics, 'course-topics-grid', 'course');
         } catch (error) {
             console.error(`Error loading topics for course ${courseId}:`, error);
-            this.ui.showNotification('Failed to load topics for this course', 'error');
+            this.ui.showPageAlert('Failed to load topics for this course', 'error');
             this.ui.renderTopicsGrid([], 'course-topics-grid', 'course'); // Show empty state
         }
     }
@@ -375,7 +375,7 @@ class TopicsManager {
             // Load topic details
             const topic = await this.getTopicById(topicId);
             if (!topic) {
-                this.ui.showNotification('Topic not found', 'error');
+                this.ui.showPageAlert('Topic not found', 'error');
                 return;
             }
             
@@ -390,7 +390,7 @@ class TopicsManager {
             
         } catch (error) {
             console.error('Error loading topic details and flashcards:', error);
-            this.ui.showNotification('Failed to load topic details', 'error');
+            this.ui.showPageAlert('Failed to load topic details', 'error');
         }
     }
 }

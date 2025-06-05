@@ -108,7 +108,7 @@ class CoursesManager {
             }
         } catch (error) {
             console.error('Error loading courses:', error);
-            this.ui.showNotification('Failed to load courses', 'error');
+            this.ui.showPageAlert('Failed to load courses', 'error');
             this.ui.showSection('welcome');
         }
     }
@@ -123,7 +123,7 @@ class CoursesManager {
             return await this.storage.getCourseById(courseId);
         } catch (error) {
             console.error('Error getting course by ID:', error);
-            this.ui.showNotification('Failed to fetch course details', 'error');
+            this.ui.showPageAlert('Failed to fetch course details', 'error');
             return null;
         }
     }
@@ -184,7 +184,7 @@ class CoursesManager {
             }
         } catch (error) {
             console.error('Error selecting course:', error);
-            this.ui.showNotification('Failed to load course', 'error');
+            this.ui.showPageAlert('Failed to load course', 'error');
         }
     }
 
@@ -198,7 +198,7 @@ class CoursesManager {
         const editingId = formElement.dataset.editingId;
 
         if (!title) {
-            this.ui.showNotification('Course title is required', 'error');
+            this.ui.showFormError('course-form', 'Course title is required');
             return;
         }
         
@@ -210,7 +210,7 @@ class CoursesManager {
         try {
             const savedCourse = await this.storage.saveCourse(courseData);
             this.ui.closeAllModals();
-            this.ui.showNotification(editingId ? 'Course updated successfully' : 'Course created successfully', 'success');
+            this.ui.showToast(editingId ? 'Course updated successfully' : 'Course created successfully', 'success');
 
             if (this.authManager) {
                 await this.authManager.refreshStats();
@@ -226,7 +226,7 @@ class CoursesManager {
             }
         } catch (error) {
             console.error('Error saving course:', error);
-            this.ui.showNotification('Failed to save course. ' + (error.message || ''), 'error');
+            this.ui.showFormError('course-form', error.message || 'Failed to save course');
         }
     }
 
@@ -239,7 +239,7 @@ class CoursesManager {
         
         try {
             await this.storage.deleteCourse(courseId);
-            this.ui.showNotification('Course deleted successfully', 'success');
+            this.ui.showToast('Course deleted successfully', 'success');
             this.currentCourseId = null;
 
             if (this.authManager) {
@@ -251,7 +251,7 @@ class CoursesManager {
             this.ui.showCourseManagementView();
         } catch (error) {
             console.error('Error deleting course:', error);
-            this.ui.showNotification('Failed to delete course. ' + (error.message || ''), 'error');
+            this.ui.showPageAlert('Failed to delete course. ' + (error.message || ''), 'error');
         }
     }
 
@@ -285,7 +285,7 @@ class CoursesManager {
             this.ui.renderCoursesForManagement(courses);
         } catch (error) {
             console.error('Error loading courses for management:', error);
-            this.ui.showNotification('Failed to load courses', 'error');
+            this.ui.showPageAlert('Failed to load courses', 'error');
             this.ui.renderCoursesForManagement([]);
         }
     }
@@ -295,7 +295,7 @@ class CoursesManager {
         try {
             const course = await this.getCourseById(courseId);
             if (!course) {
-                this.ui.showNotification('Course not found.', 'error');
+                this.ui.showPageAlert('Course not found.', 'error');
                 this.ui.showCourseManagementView();
                 return;
             }
@@ -310,7 +310,7 @@ class CoursesManager {
             }
         } catch (error) {
             console.error('Error loading course details and topics:', error);
-            this.ui.showNotification('Failed to load course information', 'error');
+            this.ui.showPageAlert('Failed to load course information', 'error');
         }
     }
 }

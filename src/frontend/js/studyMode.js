@@ -108,7 +108,7 @@ class StudyMode {
         if (!flashcards || flashcards.length === 0) {
             console.log('No flashcards found for topic:', topicId);
             if (window.uiManager) {
-                window.uiManager.showNotification('No flashcards to study in this topic! Create some first.', 'warning');
+                window.uiManager.showPageAlert('No flashcards to study in this topic! Create some flashcards first to start studying.', 'warning');
                 // Return to topic view immediately, don't show study mode at all
                 if (window.topicsManager) {
                     const topic = window.topicsManager.allTopicsCache?.find(t => t.id === topicId);
@@ -230,26 +230,24 @@ class StudyMode {
                     // Clean up and return to topic view on error
                     this.cleanup();
                     if (window.uiManager) {
-                        window.uiManager.showNotification('Failed to load flashcards for study', 'error');
+                        window.uiManager.showPageAlert('Failed to load flashcards for study. Please try again.', 'error', true);
                         // Return to topic view after error
-                        setTimeout(() => {
-                            if (window.topicsManager) {
-                                const topic = window.topicsManager.allTopicsCache?.find(t => t.id === topicId);
-                                if (topic && topic.courseId) {
-                                    window.uiManager.showTopicView(topicId, topic.courseId);
-                                } else {
-                                    window.uiManager.showTopicView(topicId);
-                                }
+                        if (window.topicsManager) {
+                            const topic = window.topicsManager.allTopicsCache?.find(t => t.id === topicId);
+                            if (topic && topic.courseId) {
+                                window.uiManager.showTopicView(topicId, topic.courseId);
                             } else {
-                                window.uiManager.showTopicsOverview();
+                                window.uiManager.showTopicView(topicId);
                             }
-                        }, 1500);
+                        } else {
+                            window.uiManager.showTopicsOverview();
+                        }
                     }
                 });
         } else {
             console.error('FlashcardsManager or storage not available');
             if (window.uiManager) {
-                window.uiManager.showNotification('Unable to access flashcards storage', 'error');
+                window.uiManager.showPageAlert('Unable to access flashcards storage. Please refresh the page and try again.', 'error', true);
             }
         }
     }
@@ -321,9 +319,25 @@ class StudyMode {
             this.currentIndex++;
             this.displayCurrentCard();
         } else {
-            // At the end, show completion message
+            // At the end, show completion overlay
             if (window.uiManager) {
-                window.uiManager.showNotification('Study session completed! 🎉', 'success');
+                window.uiManager.showSuccessOverlay(
+                    'Study Session Complete! 🎉',
+                    'Great job! You\'ve completed all flashcards in this topic.',
+                    () => {
+                        // Return to topic view after completion
+                        if (window.topicsManager) {
+                            const topic = window.topicsManager.allTopicsCache?.find(t => t.id === this.currentTopicId);
+                            if (topic && topic.courseId) {
+                                window.uiManager.showTopicView(this.currentTopicId, topic.courseId);
+                            } else {
+                                window.uiManager.showTopicView(this.currentTopicId);
+                            }
+                        } else {
+                            window.uiManager.showTopicsOverview();
+                        }
+                    }
+                );
             }
         }
     }

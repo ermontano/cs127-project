@@ -52,10 +52,10 @@ class FlashcardsManager {
         const addFlashcardBtn = document.getElementById('add-flashcard-btn');
         if (addFlashcardBtn) {
             addFlashcardBtn.addEventListener('click', () => {
-                if (!this.currentTopicId) {
-                    this.ui.showNotification('No topic selected to add flashcard to.', 'error');
-                    return;
-                }
+                        if (!this.currentTopicId) {
+            this.ui.showPageAlert('No topic selected to add flashcard to. Please select a topic first.', 'error');
+            return;
+        }
                 this.ui.openModal('flashcard');
             });
         }
@@ -68,18 +68,18 @@ class FlashcardsManager {
                     try {
                         const flashcards = await this.storage.getFlashcardsByTopic(this.currentTopicId);
                         if (flashcards.length === 0) {
-                            this.ui.showNotification('No flashcards to study. Create some first!', 'warning');
+                            this.ui.showPageAlert('No flashcards to study. Create some flashcards first!', 'warning');
                             return;
                         }
                         // Use the global study mode manager
                         if (window.studyModeManager) {
                             window.studyModeManager.start(flashcards, this.currentTopicId);
                         } else {
-                            this.ui.showNotification('Study mode is currently unavailable.', 'error');
+                            this.ui.showPageAlert('Study mode is currently unavailable. Please refresh the page and try again.', 'error');
                         }
                     } catch (error) {
                         console.error('Error loading flashcards for study:', error);
-                        this.ui.showNotification('Failed to load flashcards for study', 'error');
+                        this.ui.showPageAlert('Failed to load flashcards for study. Please try again.', 'error');
                     }
                 }
             });
@@ -104,11 +104,11 @@ class FlashcardsManager {
     async getFlashcardById(flashcardId) {
         try {
             const flashcard = await this.storage.getFlashcardById(flashcardId);
-            if (!flashcard) this.ui.showNotification('Flashcard not found', 'error');
+            if (!flashcard) this.ui.showPageAlert('Flashcard not found', 'error');
             return flashcard;
         } catch (error) {
             console.error('Error getting flashcard by ID:', error);
-            this.ui.showNotification('Failed to fetch flashcard details', 'error');
+            this.ui.showPageAlert('Failed to fetch flashcard details', 'error');
             return null;
         }
     }
@@ -124,7 +124,7 @@ class FlashcardsManager {
             this.ui.renderFlashcardsList(flashcards);
         } catch (error) {
             console.error(`Error loading flashcards for topic ${topicId}:`, error);
-            this.ui.showNotification('Failed to load flashcards for this topic', 'error');
+            this.ui.showPageAlert('Failed to load flashcards for this topic', 'error');
             this.ui.renderFlashcardsList([]);
         }
     }
@@ -141,11 +141,11 @@ class FlashcardsManager {
         const editingFlashcardId = formElement.dataset.editingId;
 
         if (!question || !answer) {
-            this.ui.showNotification('Both question and answer are required', 'error');
+            this.ui.showFormError('flashcard-form', 'Both question and answer are required');
             return;
         }
         if (!this.currentTopicId) {
-            this.ui.showNotification('No active topic selected to save flashcard to.', 'error');
+            this.ui.showFormError('flashcard-form', 'No active topic selected to save flashcard to');
             return;
         }
 
@@ -157,7 +157,7 @@ class FlashcardsManager {
         try {
             await this.storage.saveFlashcard(flashcardData);
             this.ui.closeAllModals();
-            this.ui.showNotification(editingFlashcardId ? 'Flashcard updated' : 'Flashcard created', 'success');
+            this.ui.showToast(editingFlashcardId ? 'Flashcard updated successfully' : 'Flashcard created successfully', 'success');
 
             await this.loadFlashcardsForTopic(this.currentTopicId);
             
@@ -166,7 +166,7 @@ class FlashcardsManager {
             }
         } catch (error) {
             console.error('Error saving flashcard:', error);
-            this.ui.showNotification('Failed to save flashcard. ' + (error.message || ''), 'error');
+            this.ui.showFormError('flashcard-form', error.message || 'Failed to save flashcard');
         }
     }
 
@@ -179,7 +179,7 @@ class FlashcardsManager {
 
         try {
             await this.storage.deleteFlashcard(flashcardId);
-            this.ui.showNotification('Flashcard deleted successfully', 'success');
+            this.ui.showToast('Flashcard deleted successfully', 'success');
 
             await this.loadFlashcardsForTopic(this.currentTopicId);
             
@@ -188,7 +188,7 @@ class FlashcardsManager {
             }
         } catch (error) {
             console.error('Error deleting flashcard:', error);
-            this.ui.showNotification('Failed to delete flashcard. ' + (error.message || ''), 'error');
+            this.ui.showPageAlert('Failed to delete flashcard. ' + (error.message || ''), 'error');
         }
     }
 

@@ -457,14 +457,15 @@ class AuthManager {
 
         // Validate inputs
         if (!username || !email) {
-            this.showNotification('Please fill in all required fields', 'error');
+            // Show error in form or page alert
+            window.uiManager?.showPageAlert('Please fill in all required fields', 'error') || alert('Please fill in all required fields');
             return;
         }
 
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            this.showNotification('Please enter a valid email address', 'error');
+            window.uiManager?.showPageAlert('Please enter a valid email address', 'error') || alert('Please enter a valid email address');
             return;
         }
 
@@ -484,7 +485,7 @@ class AuthManager {
                 this.user = result.user;
                 this.updateGreeting();
                 this.closeModal('edit-profile-modal');
-                this.showNotification('Profile updated successfully!', 'success');
+                window.uiManager?.showToast('Profile updated successfully!', 'success') || alert('Profile updated successfully!');
             } else {
                 this.showNotification(result.message || 'Failed to update profile', 'error');
             }

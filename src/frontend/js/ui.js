@@ -643,6 +643,7 @@ class UIManager {
                 modalElement = this.courseModal;
                 formElement = document.getElementById('course-form');
                 modalTitle = document.getElementById('course-modal-title');
+                this.hideFormError('course-form'); // Clear any existing error messages
                 if (data) {
                     modalTitle.textContent = 'Edit Course';
                     formElement.elements['course-name'].value = data.title || '';
@@ -658,6 +659,7 @@ class UIManager {
                 modalElement = this.topicModal;
                 formElement = document.getElementById('topic-form');
                 modalTitle = document.getElementById('topic-modal-title');
+                this.hideFormError('topic-form'); // Clear any existing error messages
                 const courseContextId = data && data.courseId ? data.courseId : (window.coursesManager ? window.coursesManager.currentCourseId : null);
 
                 if (data && data.id) {
@@ -676,6 +678,7 @@ class UIManager {
             case 'flashcard':
                 modalElement = this.flashcardModal;
                 modalTitle = document.getElementById('flashcard-modal-title');
+                this.hideFormError('flashcard-form'); // Clear any existing error messages
                 if (data) {
                     modalTitle.textContent = 'Edit Flashcard';
                     const questionInput = document.getElementById('flashcard-question');
@@ -760,42 +763,188 @@ class UIManager {
         });
     }
 
-    // show a notification message
+    // Legacy notification method - redirects to new methods
     // @param {string} message - the message to show
     // @param {string} type - the type of notification ('success', 'error', 'warning', or 'info')
     showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <i class="fas ${getIconForType(type)}"></i>
+        console.warn('showNotification is deprecated. Use showToast, showPageAlert, or showSuccessOverlay instead.');
+        
+        // Redirect to appropriate new method based on type and content
+        if (type === 'success' && (message.includes('completed') || message.includes('finished'))) {
+            // For completion/success messages, use overlay
+            this.showSuccessOverlay('Success!', message);
+        } else if (type === 'error') {
+            // For errors, use page alert
+            this.showPageAlert(message, 'error');
+        } else {
+            // For other messages, use toast
+            this.showToast(message, type);
+        }
+    }
+
+    // Show inline form error message
+    // @param {string} formId - the ID of the form ('course-form' or 'topic-form')
+    // @param {string} message - the error message to display
+    showFormError(formId, message) {
+        const errorElement = document.getElementById(`${formId}-error`);
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+    }
+
+    // Hide inline form error message
+    // @param {string} formId - the ID of the form ('course-form' or 'topic-form')
+    hideFormError(formId) {
+        const errorElement = document.getElementById(`${formId}-error`);
+        if (errorElement) {
+            errorElement.classList.add('hidden');
+            errorElement.textContent = '';
+        }
+    }
+
+    // Show success overlay for major accomplishments
+    // @param {string} title - the title of the success message
+    // @param {string} message - the detailed message
+    // @param {function} onClose - callback when overlay is closed
+    showSuccessOverlay(title, message, onClose = null) {
+        // Remove any existing overlay
+        this.hideSuccessOverlay();
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'success-overlay';
+        overlay.className = 'success-overlay';
+        overlay.innerHTML = `
+            <div class="success-overlay-content">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2>${title}</h2>
+                <p>${message}</p>
+                <button class="primary-button" id="success-overlay-close">Continue</button>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        
+        // Add event listener for close button
+        const closeBtn = overlay.querySelector('#success-overlay-close');
+        closeBtn.addEventListener('click', () => {
+            this.hideSuccessOverlay();
+            if (onClose) onClose();
+        });
+        
+        // Add click outside to close
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.hideSuccessOverlay();
+                if (onClose) onClose();
+            }
+        });
+        
+        // Show with animation
+        setTimeout(() => overlay.classList.add('show'), 10);
+    }
+
+    // Hide success overlay
+    hideSuccessOverlay() {
+        const overlay = document.getElementById('success-overlay');
+        if (overlay) {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.remove(), 300);
+        }
+    }
+
+    // Show page-level alert
+    // @param {string} message - the alert message
+    // @param {string} type - 'info', 'warning', 'error', 'success'
+    // @param {boolean} persistent - if true, alert stays until manually closed
+    showPageAlert(message, type = 'info', persistent = false) {
+        // Remove any existing page alert
+        this.hidePageAlert();
+        
+        const alert = document.createElement('div');
+        alert.id = 'page-alert';
+        alert.className = `page-alert ${type}`;
+        alert.innerHTML = `
+            <div class="page-alert-content">
+                <i class="fas ${this.getAlertIcon(type)}"></i>
                 <span>${message}</span>
             </div>
-            <button class="close-notification">
+            <button class="page-alert-close">
                 <i class="fas fa-times"></i>
             </button>
         `;
-        document.body.appendChild(notification);
-        setTimeout(() => { notification.classList.add('show'); }, 10);
-        notification.querySelector('.close-notification').addEventListener('click', () => {
-            removeNotification(notification);
-        });
-        setTimeout(() => {
-            removeNotification(notification);
-        }, 5000);
-
-        function removeNotification(notificationElement) {
-            notificationElement.classList.remove('show');
-            setTimeout(() => { notificationElement.remove(); }, 300);
+        
+        // Insert at the beginning of main content or after header
+        const mainContent = document.querySelector('.main-content') || document.querySelector('.app-container');
+        if (mainContent) {
+            mainContent.insertBefore(alert, mainContent.firstChild);
+        } else {
+            document.body.appendChild(alert);
         }
+        
+        // Add close event listener
+        const closeBtn = alert.querySelector('.page-alert-close');
+        closeBtn.addEventListener('click', () => this.hidePageAlert());
+        
+        // Auto hide if not persistent
+        if (!persistent) {
+            setTimeout(() => this.hidePageAlert(), 5000);
+        }
+        
+        // Show with animation
+        setTimeout(() => alert.classList.add('show'), 10);
+    }
 
-        function getIconForType(notificationType) {
-            switch (notificationType) {
-                case 'success': return 'fa-check-circle';
-                case 'error': return 'fa-exclamation-circle';
-                case 'warning': return 'fa-exclamation-triangle';
-                default: return 'fa-info-circle';
-            }
+    // Hide page alert
+    hidePageAlert() {
+        const alert = document.getElementById('page-alert');
+        if (alert) {
+            alert.classList.remove('show');
+            setTimeout(() => alert.remove(), 300);
+        }
+    }
+
+    // Show minimal toast for quick feedback
+    // @param {string} message - the message to show
+    // @param {string} type - 'success', 'error', 'warning', 'info'
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+            <i class="fas ${this.getAlertIcon(type)}"></i>
+            <span>${message}</span>
+        `;
+        
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+        
+        toastContainer.appendChild(toast);
+        
+        // Show with animation
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        // Auto hide
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Helper method to get icon for alert type
+    getAlertIcon(type) {
+        switch (type) {
+            case 'success': return 'fa-check-circle';
+            case 'error': return 'fa-exclamation-circle';
+            case 'warning': return 'fa-exclamation-triangle';
+            default: return 'fa-info-circle';
         }
     }
 
@@ -889,10 +1038,7 @@ function formatDate(date) {
     return date.toLocaleDateString();
 }
 
-// add css for notifications
-const styleElement = document.createElement('style');
-styleElement.textContent = `/* unchanged css styles */`;
-document.head.appendChild(styleElement);
+// Note: Notification styles are now in the main CSS file
 
 // Initialize UI manager when DOM is loaded
 // This is now primarily handled by AuthManager after successful authentication.

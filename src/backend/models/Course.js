@@ -89,6 +89,27 @@ class Course {
     }
 
     /**
+     * Find course by title and user ID (for uniqueness check)
+     */
+    static async findByTitleAndUserId(title, userId, excludeId = null) {
+        try {
+            let query = 'SELECT * FROM courses WHERE title = $1 AND user_id = $2';
+            let params = [title, userId];
+            
+            if (excludeId) {
+                query += ' AND id != $3';
+                params.push(excludeId);
+            }
+            
+            const result = await pool.query(query, params);
+            
+            return result.rows.length > 0 ? new Course(result.rows[0]) : null;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
      * Find course by ID with associated topics
      */
     static async findByIdWithTopics(id, userId) {

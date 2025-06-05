@@ -110,6 +110,15 @@ router.post('/', async (req, res) => {
             });
         }
 
+        // Check if topic with same title already exists for this user
+        const existingTopic = await Topic.findByTitleAndUserId(title, userId);
+        if (existingTopic) {
+            return res.status(409).json({
+                success: false,
+                message: `Topic "${title}" already exists`
+            });
+        }
+
         // Support both courseId (frontend) and course_id (backend) parameter names
         const finalCourseId = courseId || course_id || null;
 
@@ -155,6 +164,15 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Topic not found'
+            });
+        }
+
+        // Check if another topic with same title already exists for this user
+        const existingTopic = await Topic.findByTitleAndUserId(title, userId, req.params.id);
+        if (existingTopic) {
+            return res.status(409).json({
+                success: false,
+                message: `Topic "${title}" already exists`
             });
         }
 
