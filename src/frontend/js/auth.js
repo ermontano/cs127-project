@@ -354,6 +354,9 @@ class AuthManager {
             emailInput.value = this.user.email;
         }
 
+        // Clear any previous errors
+        this.hideFormError('edit-profile-form');
+
         // Show modal
         modal.classList.add('show');
         setTimeout(() => { 
@@ -438,17 +441,19 @@ class AuthManager {
         const username = document.getElementById('edit-username').value.trim();
         const email = document.getElementById('edit-email').value.trim();
 
+        // Clear any previous errors
+        this.hideFormError('edit-profile-form');
+
         // Validate inputs
         if (!username || !email) {
-            // Show error in form or page alert
-            window.uiManager?.showPageAlert('Please fill in all required fields', 'error') || alert('Please fill in all required fields');
+            this.showFormError('edit-profile-form', 'Please fill in all required fields');
             return;
         }
 
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            window.uiManager?.showPageAlert('Please enter a valid email address', 'error') || alert('Please enter a valid email address');
+            this.showFormError('edit-profile-form', 'Please enter a valid email address');
             return;
         }
 
@@ -470,11 +475,11 @@ class AuthManager {
                 this.closeModal('edit-profile-modal');
                 window.uiManager?.showToast('Profile updated successfully!', 'success') || alert('Profile updated successfully!');
             } else {
-                this.showNotification(result.message || 'Failed to update profile', 'error');
+                this.showFormError('edit-profile-form', result.message || 'Failed to update profile');
             }
         } catch (error) {
             console.error('Profile update error:', error);
-            this.showNotification('Network error occurred', 'error');
+            this.showFormError('edit-profile-form', 'Network error occurred');
         }
     }
 
