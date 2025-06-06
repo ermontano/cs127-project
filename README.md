@@ -1,206 +1,318 @@
-# 🎓 Flashcards App
+# 🎓 MemoFlash - Advanced Flashcards Application
 
-A modern, full-stack flashcards application built with Node.js, Express, and PostgreSQL. Perfect for students and learners who want to create and study with digital flashcards.
+A modern, full-stack flashcards application built with Node.js, Express, and PostgreSQL. Perfect for students and learners who want to create, organize, and study with digital flashcards while managing their study schedules effectively.
 
-## ✨ Features
+## ✨ Key Features
 
-- 🔐 **User Authentication** - Secure login/signup with bcrypt password hashing
-- 📚 **Course Management** - Organize your content into courses
-- 📁 **Topic Organization** - Create topics within courses or as standalone
-- 🃏 **Flashcard Creation** - Easy-to-use flashcard creation and editing
-- 🧠 **Study Mode** - Interactive study sessions with progress tracking
-- 📊 **Progress Statistics** - Track your learning progress
-- 🎨 **Modern UI** - Clean, responsive design with smooth animations
+### 🔐 **User Management**
+- Secure user authentication with bcrypt password hashing
+- Profile management with modal-based editing
+- Session-based authentication with PostgreSQL session store
+- Password change and account deletion functionality
 
-## 🏗️ Project Structure
+### 📚 **Content Organization**
+- **Course Management** - Organize study materials into courses with custom colors
+- **Topic Organization** - Create topics within courses or as standalone units
+- **Flashcard Creation** - Easy-to-use flashcard creation with rich text support
+- **Search Functionality** - Quick search across courses, topics, and flashcards
+
+### 🧠 **Study Features**
+- **Interactive Study Mode** - Card-based study sessions with flip animations
+
+### 📅 **Schedule Management**
+- **Course Scheduling** - Set study schedules for courses with custom time slots
+- **Calendar View** - Visual calendar interface for managing study sessions
+- **Multiple Time Slots** - Support for multiple study periods per day
+- **Weekly Schedule** - Organize study sessions by days of the week
+
+### 🎨 **Modern Interface**
+- Clean, responsive design that works on all devices
+- Smooth animations and transitions
+- Dark/Light theme support
+- Modal-based interactions for better UX
+- Toast notifications and in-context error messages
+
+## 🛠️ **Tech Stack**
+
+### **Frontend:**
+- **HTML5** - Semantic markup structure
+- **CSS3** - Modern styling with CSS variables, flexbox, and grid
+- **Vanilla JavaScript (ES6+)** - Modular client-side functionality
+
+### **Backend:**
+- **Node.js** (>=14.0.0) - Server runtime
+- **Express.js** - Web application framework
+- **RESTful API** - Clean API architecture
+
+### **Database:**
+- **PostgreSQL** - Primary database with full ACID compliance
+- **pg** - PostgreSQL client for Node.js
+
+### **Security & Authentication:**
+- **bcrypt** - Password hashing and salt generation
+- **express-session** - Session management
+- **connect-pg-simple** - PostgreSQL session store
+- **helmet** - Security headers
+- **express-rate-limit** - Rate limiting protection
+
+## 🏗️ **Project Architecture**
 
 ```
 cs127-project/
 ├── src/
 │   ├── backend/
 │   │   ├── config/
-│   │   │   └── database.js       # Database configuration
+│   │   │   └── database.js          # Database configuration
 │   │   ├── middleware/
-│   │   │   └── auth.js           # Authentication middleware
+│   │   │   └── auth.js              # Authentication middleware
 │   │   ├── models/
-│   │   │   ├── User.js           # User model
-│   │   │   ├── Course.js         # Course model
-│   │   │   ├── Topic.js          # Topic model
-│   │   │   └── Flashcard.js      # Flashcard model
+│   │   │   ├── User.js              # User model with profile management
+│   │   │   ├── Course.js            # Course model with color support
+│   │   │   ├── Topic.js             # Topic model
+│   │   │   ├── Flashcard.js         # Flashcard model
+│   │   │   └── CourseSchedule.js    # Schedule management model
 │   │   ├── routes/
-│   │   │   ├── auth.js           # Authentication routes
-│   │   │   ├── courses.js        # Course CRUD routes
-│   │   │   ├── topics.js         # Topic CRUD routes
-│   │   │   └── flashcards.js     # Flashcard CRUD routes
+│   │   │   ├── auth.js              # Authentication & profile routes
+│   │   │   ├── courses.js           # Course CRUD operations
+│   │   │   ├── topics.js            # Topic management routes
+│   │   │   ├── flashcards.js        # Flashcard operations
+│   │   │   └── schedules.js         # Schedule management routes
 │   │   ├── scripts/
-│   │   │   └── setup-database.js # Database setup script
-│   │   └── server.js             # Main server file
+│   │   │   └── setup-database.js    # Automated database setup
+│   │   └── server.js                # Main Express server
 │   └── frontend/
 │       ├── css/
-│       │   └── styles.css        # Application styles
+│       │   └── styles.css           # Comprehensive styling system
 │       ├── js/
-│       │   ├── auth.js           # Authentication handling
-│       │   ├── storage.js        # API communication
-│       │   ├── ui.js             # UI management
-│       │   ├── flashcardsManager.js
-│       │   ├── topicsManager.js
-│       │   ├── coursesManager.js
-│       │   ├── studyMode.js
-│       │   └── animations.js     # UI animations
-│       ├── index.html            # Main application page
-│       └── auth.html             # Login/signup page
-├── create-tables.sql             # Manual database setup
-├── package.json                  # Dependencies and scripts
-├── .env.example                  # Environment variables template
-└── README.md                     # This file
+│       │   ├── auth.js              # Authentication & user management
+│       │   ├── storage.js           # API communication layer
+│       │   ├── ui.js                # UI state management
+│       │   ├── flashcardsManager.js # Flashcard operations
+│       │   ├── topicsManager.js     # Topic management
+│       │   ├── coursesManager.js    # Course operations
+│       │   ├── scheduleManager.js   # Schedule management system
+│       │   ├── studyMode.js         # Interactive study sessions
+│       │   ├── models.js            # Client-side data models
+│       │   └── animations.js        # UI animations and transitions
+│       ├── images/
+│       │   └── logo.png             # Application branding
+│       ├── index.html               # Main application interface
+│       └── auth.html                # Authentication page
+├── create-tables.sql                # Manual database schema
+├── add-color-column-migration.sql   # Database migration scripts
+├── package.json                     # Dependencies and scripts
+├── .env.example                     # Environment configuration template
+└── README.md                        # Project documentation
 ```
 
-## 🚀 Quick Start
+## 🚀 **Quick Start Guide**
 
-### Prerequisites
+### **Prerequisites**
+- Node.js v14.0.0 or higher
+- PostgreSQL v12 or higher
+- npm v6.0.0 or higher
 
-- Node.js (v14 or higher)
-- PostgreSQL (v12 or higher)
-- npm or yarn
+### **Installation Steps**
 
-### Installation
-
-1. **Clone the repository**
+1. **Clone the Repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/ermontano/cs127-project.git
    cd cs127-project
    ```
 
-2. **Install dependencies**
+2. **Install Dependencies**
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Environment Setup**
    ```bash
    cp .env.example .env
    ```
    
-   Edit `.env` with your PostgreSQL credentials:
+   Configure your `.env` file:
    ```env
-   DB_USER=your_username
-   DB_PASSWORD=your_password
+   # Database Configuration
+   DB_USER=your_postgresql_username
+   DB_PASSWORD=your_postgresql_password
    DB_NAME=flashcards_db
    DB_HOST=localhost
    DB_PORT=5432
-   SESSION_SECRET=your-secret-key
+   
+   # Server Configuration
+   PORT=3000
+   SESSION_SECRET=your-super-secure-secret-key-here
+   
+   # Environment
+   NODE_ENV=development
    ```
 
-4. **Create PostgreSQL database**
+4. **Database Setup**
    ```bash
+   # Create the database
    createdb flashcards_db
-   ```
-
-5. **Set up database tables**
-   ```bash
+   
+   # Set up tables and schema
    npm run setup-db
    ```
 
-6. **Start the application**
+5. **Launch Application**
    ```bash
+   # Development mode (with auto-restart)
    npm run dev
+   
+   # Or production mode
+   npm start
    ```
 
-7. **Open your browser**
-   Navigate to `http://localhost:3000`
+6. **Access Application**
+   Open your browser and navigate to `http://localhost:3000`
 
-## 🗄️ Database Schema
+## 🗄️ **Database Schema**
 
-The application uses PostgreSQL with the following tables:
+### **Core Tables**
+- **users** - User accounts with authentication and profile data
+- **session** - Session management for persistent login
+- **courses** - User-created courses with color coding and metadata
+- **topics** - Topics linked to courses or standalone
+- **flashcards** - Individual flashcards with questions and answers
+- **course_schedules** - Study schedule management with time slots
 
-- **users** - User accounts with authentication
-- **session** - Session management for login persistence
-- **courses** - User-created courses for organization
-- **topics** - Topics that can belong to courses or be standalone
-- **flashcards** - Individual flashcards within topics
+### **Key Relationships**
+- Users → Courses (1:N)
+- Courses → Topics (1:N)
+- Topics → Flashcards (1:N)
+- Courses → Course Schedules (1:N)
 
-All tables include proper foreign key relationships and cascade deletions for data integrity.
+All foreign key constraints include CASCADE DELETE for proper data cleanup.
 
-## 📝 Available Scripts
+## 📝 **Available Scripts**
 
-| Script | Description |
-|--------|-------------|
+| Command | Description |
+|---------|-------------|
 | `npm start` | Start production server |
-| `npm run dev` | Start development server with nodemon |
-| `npm run setup-db` | Set up database tables |
+| `npm run dev` | Start development server with auto-reload |
+| `npm run setup-db` | Initialize database schema |
 
-## 🔧 Development
+## 🎯 **Application Features in Detail**
 
-### Database Management
+### **Dashboard**
+- Welcome screen with study statistics
+- Quick access to recent courses and topics
+- Progress overview and study streaks
 
-To reset the database:
-```bash
-npm run setup-db
+### **Course Management**
+- Create courses with custom colors
+- Edit course details and descriptions
+- Delete courses with confirmation
+- Schedule study sessions for courses
+
+### **Study Sessions**
+- Interactive flashcard study mode
+- Progress tracking during sessions
+- Card shuffling and review options
+- Study completion statistics
+
+### **Schedule System**
+- Visual calendar interface
+- Drag-and-drop schedule management
+- Multiple time slots per day
+- Weekly view with color-coded courses
+
+## 🔐 **Security Implementation**
+
+- **Password Security**: bcrypt with salt rounds for secure hashing
+- **Session Management**: Server-side sessions with PostgreSQL storage
+- **Input Validation**: Comprehensive server-side validation
+- **SQL Injection Prevention**: Parameterized queries throughout
+- **Rate Limiting**: Protection against brute force attacks
+- **CSRF Protection**: Helmet.js security headers
+- **Authentication Middleware**: Route-level access control
+
+## 🎨 **UI/UX Features**
+
+- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile
+- **Smooth Animations**: CSS transitions and JavaScript animations
+- **Modal Interactions**: Context-aware modal dialogs
+- **Error Handling**: User-friendly error messages in appropriate contexts
+- **Loading States**: Visual feedback during operations
+- **Toast Notifications**: Non-intrusive success/error notifications
+
+## 🚀 **Deployment Considerations**
+
+### **Environment Variables for Production**
+```env
+NODE_ENV=production
+PORT=3000
+DB_HOST=your_production_db_host
+DB_SSL=true
+SESSION_SECRET=very-long-random-secret-for-production
 ```
 
-To manually run SQL commands:
+### **Database Migration**
+The application includes migration scripts for schema updates:
 ```bash
-psql -d flashcards_db -f create-tables.sql
+psql -d flashcards_db -f add-color-column-migration.sql
 ```
 
-### Project Organization
+## 🐛 **Troubleshooting**
 
-- **Backend** (`src/backend/`) - Express.js API server
-- **Frontend** (`src/frontend/`) - Static HTML/CSS/JS files
-- **Models** - Database interaction layer
-- **Routes** - API endpoints
-- **Middleware** - Authentication and request processing
+### **Common Issues**
 
-## 🔐 Security Features
+**Database Connection Failed**
+```bash
+# Check PostgreSQL service
+sudo service postgresql status
 
-- Password hashing with bcrypt
-- Session-based authentication
-- CSRF protection with Helmet.js
-- Rate limiting
-- Input validation and sanitization
-- SQL injection prevention with parameterized queries
+# Verify database exists
+psql -l | grep flashcards_db
 
-## 🎯 Usage
-
-1. **Sign Up** - Create a new account
-2. **Create Courses** - Organize your study materials
-3. **Add Topics** - Create topics within courses or standalone
-4. **Create Flashcards** - Add questions and answers
-5. **Study** - Use study mode to review your flashcards
-6. **Track Progress** - View your study statistics
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Database Connection Error**
-- Ensure PostgreSQL is running
-- Check your `.env` file credentials
-- Verify database exists
+# Test connection
+psql -d flashcards_db -c "SELECT version();"
+```
 
 **Port Already in Use**
-- Change the PORT in your `.env` file
-- Kill the process using the port: `lsof -ti:3000 | xargs kill`
+```bash
+# Find process using port 3000
+lsof -ti:3000
+
+# Kill the process
+kill -9 $(lsof -ti:3000)
+```
 
 **Session Issues**
-- Clear browser cookies
-- Restart the server
-- Check session table exists in database
+```bash
+# Clear session data
+psql -d flashcards_db -c "DELETE FROM session;"
 
-For more detailed troubleshooting, see `TROUBLESHOOTING.md`.
+# Restart server
+npm run dev
+```
+
+## 🤝 **Contributing**
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## 📄 **License**
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 **Authors**
+
+- **Development Team** - Initial work and ongoing development
+
+## 🙏 **Acknowledgments**
+
+- Built as part of CMSC 127 (Database Systems) coursework
+- Utilizes modern web development best practices
+- Designed with user experience and accessibility in mind
 
 ---
 
-Made with ❤️ for better learning experiences
+**📞 Support**: For issues or questions, please open an issue on GitHub or contact the development team.
+
+**🔄 Version**: 1.0.0 - Full-featured flashcard application with scheduling system
