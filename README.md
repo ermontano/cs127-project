@@ -304,5 +304,3 @@ npm run dev
 ## 🙏 **Acknowledgments**
 
 - Built as part of CMSC 127 (Database Systems) project
-- Utilizes modern web development best practices
-- Designed with user experience and accessibility in mind
