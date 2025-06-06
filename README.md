@@ -297,22 +297,12 @@ npm run dev
 4. Push to the branch: `git push origin feature/amazing-feature`
 5. Open a Pull Request
 
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 👥 **Authors**
 
-- **Development Team** - Initial work and ongoing development
+- Berk Stephen Cutamora
 
 ## 🙏 **Acknowledgments**
 
-- Built as part of CMSC 127 (Database Systems) coursework
+- Built as part of CMSC 127 (Database Systems) project
 - Utilizes modern web development best practices
 - Designed with user experience and accessibility in mind
-
----
-
-**📞 Support**: For issues or questions, please open an issue on GitHub or contact the development team.
-
-**🔄 Version**: 1.0.0 - Full-featured flashcard application with scheduling system
